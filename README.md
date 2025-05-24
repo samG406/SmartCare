@@ -1,10 +1,10 @@
-# Smart-Care
+# SmartCare
 
 A Full-stack healthcare web application that provides comprehensive healthcare management solutions.
 
 ## Project Overview
 
-Smart-Care is a modern healthcare management system that includes both frontend and backend components:
+SmartCare is a modern healthcare management system that includes both frontend and backend components:
 
 - **Frontend**: Modern web interface for patients and healthcare providers
 - **Backend**: Robust API and database system for managing healthcare data
@@ -17,6 +17,9 @@ Smart-Care is a modern healthcare management system that includes both frontend 
 - Medical Records Management
 - Appointment Scheduling
 - Secure Data Storage
+- AI-powered health diagnostics
+- Telemedicine support
+- HIPAA & GDPR compliance
 
 ## Technology Stack
 
@@ -45,3 +48,7 @@ SmartHealthcare-FullProject/
 ## Contributing
 
 Feel free to submit issues and enhancement requests!
+
+## License
+
+This project is licensed under the MIT License.
