@@ -1,70 +1,226 @@
-# Getting Started with Create React App
+# SmartHealthcare - A Scalable & Intelligent Healthcare Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Project Overview
 
-## Available Scripts
+SmartHealthcare is a secure, AI-powered healthcare management system designed for patients, doctors, hospitals, and researchers. It enables seamless patient-doctor interactions, AI diagnostics, secure health record management, telemedicine, and regulatory compliance (HIPAA/GDPR).
 
-In the project directory, you can run:
+# Core Purpose
 
-### `npm start`
+The SmartHealthcare website provides a scalable, secure, and intelligent platform to empower individuals to manage their health while enabling seamless communication with healthcare providers.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+# Key Objectives
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Seamless patient-doctor interaction via online appointment scheduling.
+AI-powered health diagnostics for early disease detection.
+Secure Electronic Health Records (EHRs) with role-based access control.
+Telemedicine support for remote consultations.
+HIPAA & GDPR compliance for secure data handling.
 
-### `npm test`
+# Target Users & Their Needs
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `npm run build`
+Patients : Book appointments, view health records, AI symptom checker, access telemedicine, receive reminders.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Doctors: Manage patients, schedule appointments, update health records, provide online consultations.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Hospitals & Clinics: Maintain centralized patient records, track staff availability, manage billing & insurance.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Healthcare Researchers: Access anonymized patient data for research & AI-driven health insights.
 
-### `npm run eject`
+# Key Features
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+    User Authentication & Role-Based Access Control (RBAC)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+    Secure login/signup using OAuth & JWT-based authentication.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+    Role-based dashboards for Patients, Doctors, and Admins.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Online Appointment Booking & Management
 
-## Learn More
+    Easy appointment scheduling, rescheduling, and cancellations.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+    Doctors manage availability and patients get SMS & email reminders.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
 
-### Code Splitting
+# Electronic Health Records (EHR) System
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+    Patients can securely view & download their complete medical history.
 
-### Analyzing the Bundle Size
+    Doctors can update and manage patient records efficiently.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+# Telemedicine & Video Consultations
 
-### Making a Progressive Web App
+   Secure video calls for remote doctor consultations.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+   AI-powered speech-to-text for medical notes automation.
 
-### Advanced Configuration
+# Admin Dashboard & Healthcare Analytics
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+   Manage users, appointments, and system settings.
 
-### Deployment
+   Real-time tracking of patient data and hospital resources.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+# Security & Compliance
 
-### `npm run build` fails to minify
+   End-to-end encryption for all medical data.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+# Tech Stack
+
+   Frontend:
+   Framework: React.js
+   UI Library: Bootstrap
+   Authentication: JWT
+
+   Backend (API & Logic Layer):
+   Framework: Node.js, Express.js
+   Database: MySQL
+
+# Additional Integrations:
+
+💳 Payment Gateway: Stripe
+
+# Wireframe & UI Mockups
+
+-> Wireframes & UI designs will be created using Figma.
+-> User-friendly dashboards for patients, doctors, and admins.
+-> Mobile responsive & intuitive navigation for accessibility.
+
+
+# UML Diagrams
+
+
+## 1️ Use Case Diagram
+- The Use Case Diagram illustrates the interactions between different user roles (patients, doctors, and administrators) and the system functionalities.
+- It highlights key use cases such as user registration, appointment booking, managing health records, and telemedicine consultations.
+
+![Use Case Diagram](./diagrams/use_case_diagram.png)
+
+---
+
+## 2 Sequence Diagram
+- This sequence diagram illustrates the step-by-step process of user registration. It shows how a user interacts with the system by providing registration details through the User Interface.
+- Below is the Sequence Diagram.
+
+![Sequence Diagram](./diagrams/sequence_diagram1.png)
+
+- This sequence diagram demonstrates how a patient books an appointment with a doctor. 
+- It includes interactions where the patient selects a doctor, date, and time slot via the User Interface.
+
+![Sequence Diagram](./diagrams/sequence_diagram2.png)
+---
+
+
+## 3 Class Diagram
+- The Class Diagram represents the structure of the system by showing its classes, attributes, methods, and relationships.
+- It includes key entities such as User, Patient, Doctor, Appointment, and MedicalRecord, along with their associations (e.g., one-to-many relationships between patients and appointments).
+- Below is the Class Diagram.
+
+![Class Diagram](./diagrams/class_diagram.png)
+
+---
+
+## 4️ Activity Diagram
+
+- The Activity Diagram represents the workflow of the system.
+- Below is the Activity Diagram.
+
+![Activity Diagram](./diagrams/activity_diagram.png)
+
+
+# 📌 SmartHealthcare Database Design
+
+## 1 Entity-Relationship Diagram (ERD)
+The ERD below represents the database structure for the SmartHealthcare system.
+
+![ERD Diagram](./diagrams/ERD.png)
+
+
+## 2️ Database Tables and Schema
+The SmartHealthcare database consists of the following tables:
+
+###  i. Users Table
+- **Primary Key:** `user_id` (`INT`, `AUTO_INCREMENT`)
+- **Attributes:** `full_name`, `email`, `password`, `role`, `created_at`
+- **No foreign keys**
+
+###  ii. Patients Table
+- **Primary Key:** `patient_id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Key:** `user_id` (references `Users` table)
+- **Attributes:** `date_of_birth`, `gender`, `phone_number`, `address`, `emergency_contact`, `created_at`
+
+###  iii. Doctors Table
+- **Primary Key:** `doctor_id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Key:** `user_id` (references `Users` table)
+- **Attributes:** `specialization`, `experience`, `phone_number`, `hospital_affiliation`, `created_at`
+
+###  iv. Appointments Table
+- **Primary Key:** `appointment_id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Keys:** `patient_id` (references `Patients` table), `doctor_id` (references `Doctors` table)
+- **Attributes:** `appointment_date`, `status`, `notes`, `created_at`
+
+###  v. Medical_Records Table
+- **Primary Key:** `record_id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Keys:** `patient_id` (references `Patients` table), `doctor_id` (references `Doctors` table)
+- **Attributes:** `diagnosis`, `treatment`, `prescription`, `visit_date`, `created_at`
+
+###  vi. Prescriptions Table
+- **Primary Key:** `prescription_id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Keys:** `record_id` (references `Medical_Records` table), `patient_id` (references `Patients` table), `doctor_id` (references `Doctors` table)
+- **Attributes:** `medication`, `dosage`, `frequency`, `duration`, `created_at`
+
+###  vii. Permissions Table
+- **Primary Key:** `permission_id` (`INT`, `AUTO_INCREMENT`)
+- **No foreign keys**
+- **Attributes:** `role`, `resource`, `can_read`, `can_write`, `can_delete`
+
+---
+
+##  3️ Sample SQL Queries
+Below are some sample queries demonstrating key functionalities of the SmartHealthcare database.
+
+###  → Retrieve all appointments for a specific patient
+```sql
+SELECT a.appointment_id, a.appointment_date, a.status, u.full_name AS doctor_name
+FROM Appointments a
+JOIN Doctors d ON a.doctor_id = d.doctor_id
+JOIN Users u ON d.user_id = u.user_id
+WHERE a.patient_id = 1;
+```
+###  → List all doctors with their specializations and experience:
+
+``` sql
+SELECT u.full_name, d.specialization, d.experience 
+FROM Doctors d 
+JOIN Users u ON d.user_id = u.user_id 
+ORDER BY d.experience DESC; 
+```
+
+
+# Contribution Guidelines
+
+Steps to Contribute (For Collaborators)
+
+1. Clone the repository
+
+2. Create a feature branch
+
+3. Make changes & commit
+
+    git add .
+    git commit -m "Added new feature"
+
+4. Push to GitHub
+
+    git push origin feature-branch-name
+
+5. Create a Pull Request and request a review.
+
+
+# 📄 License
+
+This project is licensed under the MIT License – see the LICENSE file for details.
+
+
+# Thank you for checking out SmartHealthcare! Let's make healthcare accessible, secure, and intelligent for everyone!
