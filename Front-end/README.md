@@ -1,149 +1,281 @@
-# SmartCare - Hybrid React/Next.js Migration
+# SmartCare - Next.js Frontend Application
 
-## 🚀 Project Overview
+## Project Overview
 
-This project demonstrates a **hybrid migration approach** from React + Vite to Next.js, allowing you to learn Next.js while maintaining your existing React application.
+SmartCare is a modern healthcare management platform built with Next.js, providing comprehensive solutions for patients and healthcare providers. This frontend application is part of a full-stack healthcare system designed to facilitate seamless patient-doctor interactions, appointment management, and medical record handling.
 
-## 📁 Project Structure
+## Technology Stack
+
+### Core Framework
+- **Next.js 14+** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **React 18** - UI library
+
+### Styling & UI
+- **Tailwind CSS** - Utility-first CSS framework
+- **CSS Modules** - Component-scoped styling
+
+### Authentication & State Management
+- **JWT Tokens** - Secure authentication
+- **Cookies** - Session management
+- **localStorage** - Client-side data persistence
+
+### Development Tools
+- **ESLint** - Code linting and quality
+- **PostCSS** - CSS processing
+- **Next.js Middleware** - Route protection and authentication
+
+## Project Structure
 
 ```
-smart-ui/
-├── Frontend/          # Original React + Vite app
-│   ├── src/
-│   │   ├── pages/     # React Router pages
-│   │   ├── components/
-│   │   └── App.jsx
-│   └── package.json
-├── Front-end/         # New Next.js app
-│   ├── src/
-│   │   ├── app/       # Next.js App Router pages
-│   │   ├── components/
-│   │   └── middleware.ts
-│   └── package.json
-└── Back_smartcare-be/ # Backend API
+Front-end/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── api/               # API routes
+│   │   ├── doctors/           # Doctor dashboard pages
+│   │   ├── patient/           # Patient dashboard pages
+│   │   ├── login/             # Authentication pages
+│   │   └── layout.tsx         # Root layout
+│   ├── components/            # Reusable React components
+│   │   ├── DoctorNavbar.tsx
+│   │   ├── PatientNavbar.tsx
+│   │   └── Button.tsx
+│   ├── config/                # Configuration files
+│   │   └── api.ts             # API endpoint configuration
+│   ├── lib/                   # Utility libraries
+│   │   ├── cookies.ts         # Cookie management
+│   │   └── format.ts          # Date/time formatting
+│   ├── middleware.ts          # Next.js middleware for auth
+│   └── icons/                 # Static assets
+├── public/                     # Public static files
+├── package.json
+├── next.config.ts             # Next.js configuration
+├── tsconfig.json              # TypeScript configuration
+└── tailwind.config.ts         # Tailwind CSS configuration
 ```
 
-## 🎯 Migration Strategy
+## Features
 
-### Phase 1: Core Features (Current) ✅
-- ✅ Homepage
-- ✅ Login
-- ✅ Doctor Dashboard
-- ⏳ Signup (Next)
-- ⏳ Patient Dashboard (Next)
+### Patient Features
+- User authentication and registration
+- Patient dashboard with appointment overview
+- Appointment booking system
+- Profile management
+- Medical records access
+- Prescription tracking
+- Doctor search and selection
 
-### Phase 2: New Features in Next.js 📈
-- Build NEW features ONLY in Next.js
-- Don't migrate old React features yet
-- Let Next.js grow naturally
+### Doctor Features
+- Doctor authentication and profile management
+- Dashboard with patient statistics
+- Appointment management
+- Patient list and history
+- Schedule management
+- Invoice generation
+- Profile settings
 
-### Phase 3: Final Migration (Future)
-- Keep React as reference
-- Gradually migrate when needed
-- Or keep both as needed
+### Common Features
+- Role-based access control
+- Responsive design for mobile and desktop
+- Secure authentication flow
+- Real-time data synchronization
+- Intuitive user interface
 
-## 🛠️ Technologies Used
+## Getting Started
 
-### Next.js Features Demonstrated:
-- **App Router** - Modern routing system
-- **Server Components** - Better performance
-- **API Routes** - Backend functionality
-- **Middleware** - Authentication handling
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Utility-first styling
+### Prerequisites
 
-### React Features (Original):
-- **React Router** - Client-side routing
-- **Bootstrap** - Component library
-- **Vite** - Fast development server
-- **localStorage** - Client-side storage
+- Node.js 18.x or higher
+- npm or yarn package manager
+- Backend API server running (see Back_smartcare-be)
 
-## 🚀 Getting Started
+### Installation
 
-### Run React App (Original):
-```bash
-cd Frontend
-npm run dev
-# Runs on http://localhost:3000
-```
-
-### Run Next.js App (New):
+1. Navigate to the frontend directory:
 ```bash
 cd Front-end
-npm run dev
-# Runs on http://localhost:3001
 ```
 
-### Run Backend:
+2. Install dependencies:
 ```bash
-cd Back_smartcare-be
-npm run dev
-# Runs on http://localhost:7070
+npm install
 ```
 
-## 📊 Key Differences
+3. Create environment variables file:
+```bash
+# Create .env.local file
+NEXT_PUBLIC_API_URL=http://localhost:7070
+```
 
-| Feature | React + Vite | Next.js |
-|---------|--------------|---------|
-| **Routing** | React Router | File-based routing |
-| **Authentication** | Client-side | Server-side + Client |
-| **API** | External backend | Built-in API routes |
-| **Performance** | Client-side rendering | SSR + SSG |
-| **SEO** | Limited | Excellent |
-| **Bundle Size** | Smaller initial | Optimized automatically |
+### Development
 
-## 🎓 Learning Objectives
+Start the development server:
+```bash
+npm run dev
+```
 
-### What You'll Learn:
-1. **Next.js App Router** - Modern routing patterns
-2. **Server Components** - When to use server vs client
-3. **API Routes** - Building backend functionality
-4. **Middleware** - Request/response handling
-5. **Performance Optimization** - SSR, SSG, code splitting
-6. **SEO Best Practices** - Meta tags, structured data
+The application will be available at `http://localhost:3000`
 
-### Career Benefits:
-- **Higher Salary** - Next.js developers earn 20-30% more
-- **Job Opportunities** - Most companies want Next.js experience
-- **Modern Skills** - Industry-standard framework
-- **Full-stack Potential** - API routes enable full-stack development
+### Production Build
 
-## 🔄 Migration Benefits
+Build the application for production:
+```bash
+npm run build
+```
 
-### Immediate Benefits:
-- **Learning Experience** - Hands-on Next.js development
-- **Performance Comparison** - See differences in action
-- **Risk-free Experimentation** - Original app still works
+Start the production server:
+```bash
+npm start
+```
 
-### Long-term Benefits:
-- **Scalability** - Next.js handles growth better
-- **SEO** - Better search engine visibility
-- **Performance** - Faster page loads
-- **Developer Experience** - Modern tooling
+## Environment Configuration
 
-## 📝 Next Steps
+Create a `.env.local` file in the root of the `Front-end` directory:
 
-1. **Explore Both Apps** - Compare functionality
-2. **Add New Features** - Build in Next.js first
-3. **Performance Testing** - Measure differences
-4. **Gradual Migration** - Move pages one by one
-5. **Production Deployment** - Deploy Next.js version
+```env
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:7070
 
-## 🤝 Contributing
+# For production, set to your backend API URL:
+# NEXT_PUBLIC_API_URL=https://your-backend-api.com
+```
 
-This is a learning project. Feel free to:
-- Experiment with new features
-- Compare implementations
-- Ask questions about differences
-- Suggest improvements
+## API Integration
 
-## 📚 Resources
+The frontend communicates with the backend API through the configuration file located at `src/config/api.ts`. This file handles:
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [React Documentation](https://react.dev)
-- [Tailwind CSS](https://tailwindcss.com)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs)
+- Dynamic API URL resolution (development vs production)
+- Centralized endpoint management
+- Environment-based configuration
+
+### Key API Endpoints
+
+- Authentication: `/api/auth/login`, `/api/auth/signup`
+- Patients: `/api/patient/profile`, `/patients`
+- Doctors: `/api/doctor/profile`, `/doctors`
+- Appointments: `/appointments`
+- Schedules: `/api/timings`
+
+## Authentication Flow
+
+1. User signs up or logs in through the authentication pages
+2. JWT token is stored in cookies via middleware
+3. Protected routes are guarded by Next.js middleware
+4. Role-based redirection to appropriate dashboard
+5. Session persistence using secure cookies
+
+## Routing Structure
+
+### Public Routes
+- `/` - Homepage
+- `/login` - Login page
+- `/signup` - Registration page
+
+### Protected Routes (Patient)
+- `/patient/dashboard` - Patient dashboard
+- `/patient/booking` - Book appointments
+- `/patient/settings` - Profile settings
+- `/patient/medical-records` - View medical records
+- `/patient/prescriptions` - View prescriptions
+
+### Protected Routes (Doctor)
+- `/doctors/dashboard` - Doctor dashboard
+- `/doctors/appointments` - Manage appointments
+- `/doctors/patients` - Patient list
+- `/doctors/schedule` - Schedule management
+- `/doctors/invoices` - Invoice management
+- `/doctors/settings` - Profile settings
+
+## Code Organization
+
+### Components
+Reusable components are located in `src/components/`. Each component follows React best practices with TypeScript typing.
+
+### Pages
+Pages follow Next.js App Router conventions. Each page is a React Server Component by default, with client-side interactivity added using the `'use client'` directive when needed.
+
+### Utilities
+Shared utilities for formatting, API calls, and data manipulation are in `src/lib/`.
+
+### Configuration
+API and environment configurations are centralized in `src/config/`.
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Connect your GitHub repository to Vercel
+2. Set the root directory to `Front-end`
+3. Configure environment variables:
+   - `NEXT_PUBLIC_API_URL` - Your backend API URL
+4. Deploy automatically on push to main branch
+
+### Other Platforms
+
+The application can be deployed to any platform supporting Next.js:
+- AWS Amplify
+- Netlify
+- Railway
+- Docker containers
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## Performance Optimization
+
+- Server-side rendering for improved initial load times
+- Automatic code splitting
+- Image optimization via Next.js Image component
+- Dynamic imports for large components
+- Caching strategies for API calls
+
+## Security Considerations
+
+- JWT tokens stored in HTTP-only cookies
+- CSRF protection via Next.js middleware
+- Input validation on client and server
+- XSS prevention through React's built-in escaping
+- Secure API communication
+
+## Troubleshooting
+
+### Common Issues
+
+**Port already in use:**
+```bash
+# Kill process on port 3000
+npx kill-port 3000
+```
+
+**Environment variables not loading:**
+- Ensure `.env.local` is in the `Front-end` directory
+- Restart the development server after adding variables
+- Variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser
+
+**API connection errors:**
+- Verify backend server is running
+- Check `NEXT_PUBLIC_API_URL` in environment variables
+- Verify CORS configuration on backend
+
+## Contributing
+
+1. Create a feature branch from `main`
+2. Make your changes
+3. Test thoroughly
+4. Submit a pull request with a clear description
+
+## License
+
+This project is part of the SmartCare healthcare management system.
+
+## Support
+
+For issues and questions, please refer to the main project repository or contact the development team.
 
 ---
 
-**Happy Learning! 🎉**
+Built with Next.js and TypeScript for modern healthcare management.

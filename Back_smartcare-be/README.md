@@ -16,7 +16,7 @@ Secure Electronic Health Records (EHRs) with role-based access control.
 Telemedicine support for remote consultations.
 HIPAA & GDPR compliance for secure data handling.
 
-# Target Users & Their Needs
+# Target Users and Their Needs
 
 
 Patients : Book appointments, view health records, AI symptom checker, access telemedicine, receive reminders.
