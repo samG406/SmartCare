@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -42,10 +42,9 @@ export default function SignupPage() {
           };
 
       // Debug logging
-      console.log('Signup attempt - API_URL:', API_URL);
       console.log('Signup attempt - Request data:', { ...submitForm, password: '***' });
       
-      const res = await fetch(`${API_URL}/api/auth/signup`, {
+      const res = await apiFetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitForm),
@@ -81,7 +80,7 @@ export default function SignupPage() {
       }
 
       // Auto-login after successful signup to redirect by role
-      const loginResp = await fetch(`${API_URL}/api/auth/login`, {
+      const loginResp = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password }),

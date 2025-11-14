@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { setCookie } from '@/lib/cookies';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,10 +29,9 @@ export default function LoginPage() {
 
     try {
       // Debug logging
-      console.log('Login attempt - API_URL:', API_URL);
       console.log('Login attempt - Request data:', { email: formData.email, password: '***' });
       
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
