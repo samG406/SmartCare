@@ -9,15 +9,61 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    console.log('Login attempt for email:', email);
+
     // Find user by email
-    const user = await User.findByEmail(email);
+    let user;
+    try {
+      user = await User.findByEmail(email);
+    } catch (dbError) {
+      console.error('Database error finding user:', dbError);
+      if (!res.headersSent) {
+        return res.status(500).json({ 
+          message: "Database error",
+          error: dbError.message || 'Unknown database error'
+        });
+      }
+      return;
+    }
+
     if (!user) {
+      console.log('User not found for email:', email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    console.log('User found:', { user_id: user.user_id, email: user.email, role: user.role });
+
+    // Check if password field exists
+    if (!user.password) {
+      console.error('User has no password field:', user);
+      return res.status(500).json({ 
+        message: "User account error",
+        error: "Password field missing" 
+      });
+    }
+
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    let isValidPassword;
+    try {
+      isValidPassword = await bcrypt.compare(password, user.password);
+    } catch (bcryptError) {
+      console.error('Bcrypt error:', bcryptError);
+      if (!res.headersSent) {
+        return res.status(500).json({ 
+          message: "Password verification error",
+          error: bcryptError.message || 'Unknown password error'
+        });
+      }
+      return;
+    }
+
     if (!isValidPassword) {
+      console.log('Invalid password for email:', email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
@@ -32,35 +78,55 @@ router.post('/login', async (req, res) => {
     );
 
     console.log("Looking up doctor for user_id:", user.user_id);
-    // If doctor, fetch title and department
-    if (user.role.toLowerCase() === "doctor") {
-      db.query(
-        "SELECT doctor_id, title, department FROM Doctors WHERE user_id = ?",
-        [user.user_id],
-        (err, doctorRows) => {
-          console.log("Doctor query result:", doctorRows);
-          if (err) {
-            console.error(err);
-            return res.status(500).json({ message: "Server error" });
-          }
-          const doctor = doctorRows[0] || {};
-          res.json({
-            token,
-            user: {
-              user_id: user.user_id,
-              email: user.email,
-              role: user.role,
-              doctor_id: doctor.doctor_id || null,
-              title: doctor.title || "No title",
-              department: doctor.department || "No department",
-              full_name: user.full_name || user.name || ""
+    // If doctor, fetch doctor details
+    const userRole = (user.role || '').toLowerCase();
+    if (userRole === "doctor") {
+      // Convert callback-based query to promise
+      // Note: Using specialization and phone_number to match database schema
+      let doctorRows = [];
+      try {
+        doctorRows = await new Promise((resolve, reject) => {
+          db.query(
+            "SELECT doctor_id, specialization, phone_number, hospital_affiliation, experience FROM doctors WHERE user_id = ?",
+            [user.user_id],
+            (err, results) => {
+              if (err) {
+                console.error("Doctor query error:", err);
+                console.error("Error details:", err.message, err.code, err.sqlMessage);
+                // Don't reject - just return empty array if query fails
+                // This allows login to succeed even if Doctors table has issues
+                console.warn("Warning: Could not fetch doctor details, continuing with basic user info");
+                return resolve([]);
+              }
+              resolve(results || []);
             }
-          });
+          );
+        });
+      } catch (doctorError) {
+        console.error("Error in doctor query promise:", doctorError);
+        // Continue with empty doctor data
+        doctorRows = [];
+      }
+      
+      console.log("Doctor query result:", doctorRows);
+      const doctor = doctorRows[0] || {};
+      return res.json({
+        token,
+        user: {
+          user_id: user.user_id,
+          email: user.email,
+          role: user.role,
+          doctor_id: doctor.doctor_id || null,
+          specialization: doctor.specialization || null,
+          phone_number: doctor.phone_number || null,
+          hospital_affiliation: doctor.hospital_affiliation || null,
+          experience: doctor.experience || null,
+          full_name: user.full_name || user.name || ""
         }
-      );
+      });
     } else {
       // Not a doctor, just return user info
-      res.json({
+      return res.json({
         token,
         user: {
           user_id: user.user_id,
@@ -71,8 +137,25 @@ router.post('/login', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error('Login error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Ensure response hasn't been sent already
+    if (!res.headersSent) {
+      // Return detailed error in development, generic in production
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      res.status(500).json({ 
+        message: "Server error",
+        ...(isDevelopment && { 
+          error: error.message || 'Unknown error',
+          stack: error.stack 
+        })
+      });
+    } else {
+      console.error('Response already sent, cannot send error response');
+    }
   }
 });
 
@@ -94,28 +177,45 @@ router.post('/signup', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user
-    const query = 'INSERT INTO Users (full_name, email, password, role) VALUES (?, ?, ?, ?)';
+    const query = 'INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)';
     db.query(
       query,
       [full_name, email, hashedPassword, role],
       (error, results) => {
         if (error) {
-          console.error(error);
-          return res.status(500).json({ message: "Error creating user" });
+          console.error('User insert error:', error);
+          console.error('Error details:', error.message, error.code, error.sqlMessage);
+          if (!res.headersSent) {
+            return res.status(500).json({ 
+              message: "Error creating user", 
+              error: error.message || 'Unknown database error'
+            });
+          }
+          return;
         }
 
         const userId = results.insertId;
 
         // If doctor, insert into Doctors table as well
-        if (role.toLowerCase() === "doctor") {
-          const doctorInsertQuery = 'INSERT INTO Doctors (user_id, title, department, experience, mobile, hospital_affiliation) VALUES (?, ?, ?, ?, ?, ?)';
+        // Map frontend fields to database columns: department -> specialization, mobile -> phone_number
+        const userRole = (role || '').toLowerCase();
+        if (userRole === "doctor") {
+          // Use specialization and phone_number to match database schema
+          const doctorInsertQuery = 'INSERT INTO doctors (user_id, specialization, phone_number, experience, hospital_affiliation) VALUES (?, ?, ?, ?, ?)';
           db.query(
             doctorInsertQuery,
-            [userId, title || null, department || null, experience || null, mobile || null, hospital_affiliation || null],
+            [userId, department || null, mobile || null, experience || null, hospital_affiliation || null],
             (err2, drResult) => {
               if (err2) {
                 console.error('Doctor table insert error:', err2);
-                return res.status(500).json({ message: "Error creating doctor profile" });
+                console.error('Error details:', err2.message, err2.code, err2.sqlMessage);
+                if (!res.headersSent) {
+                  return res.status(500).json({ 
+                    message: "Error creating doctor profile", 
+                    error: err2.message || 'Unknown database error'
+                  });
+                }
+                return;
               }
               // Success response for doctor
               res.status(201).json({
@@ -125,9 +225,10 @@ router.post('/signup', async (req, res) => {
                   full_name,
                   email,
                   role,
-                  title,
-                  department,
-                  mobile,
+                  specialization: department || null,
+                  phone_number: mobile || null,
+                  experience: experience || null,
+                  hospital_affiliation: hospital_affiliation || null,
                   doctor_id: drResult?.insertId || null
                 }
               });
@@ -149,8 +250,25 @@ router.post('/signup', async (req, res) => {
     );
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error('Signup error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Ensure response hasn't been sent already
+    if (!res.headersSent) {
+      // Return detailed error in development, generic in production
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      res.status(500).json({ 
+        message: "Server error",
+        ...(isDevelopment && { 
+          error: error.message || 'Unknown error',
+          stack: error.stack 
+        })
+      });
+    } else {
+      console.error('Response already sent, cannot send error response');
+    }
   }
 });
 

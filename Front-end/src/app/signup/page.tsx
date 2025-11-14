@@ -41,19 +41,42 @@ export default function SignupPage() {
             role: form.role,
           };
 
+      // Debug logging
+      console.log('Signup attempt - API_URL:', API_URL);
+      console.log('Signup attempt - Request data:', { ...submitForm, password: '***' });
+      
       const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitForm),
       });
+      
+      console.log('Signup response status:', res.status);
+      console.log('Signup response headers:', Object.fromEntries(res.headers.entries()));
 
       if (!res.ok) {
-        const data = await res.json();
-        if (data.message?.toLowerCase().includes('already registered')) {
+        let data = {};
+        try {
+          const text = await res.text();
+          console.log('Signup response body (raw):', text);
+          if (text) {
+            data = JSON.parse(text);
+          } else {
+            data = { message: `Server returned empty response (${res.status})` };
+          }
+        } catch (parseError) {
+          console.error('Failed to parse signup response:', parseError);
+          data = { message: `Server error: ${res.status} ${res.statusText}` };
+        }
+        console.error('Signup API error:', res.status, data);
+        const errorData = data as { message?: string; error?: string };
+        const errorMessage = errorData?.message || errorData?.error || `Registration failed (${res.status})`;
+        if (errorMessage.toLowerCase().includes('already registered')) {
           setError('User is already registered. Please login or use a different email.');
         } else {
-          setError(data.message || 'Registration failed');
+          setError(errorMessage);
         }
+        setLoading(false);
         return;
       }
 
@@ -84,7 +107,12 @@ export default function SignupPage() {
       else router.push('/');
     } catch (err) {
       console.error('Signup error:', err);
-      setError('Something went wrong. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        setError('Unable to connect to server. Please check your connection and ensure the backend is running.');
+      } else {
+        setError(`Something went wrong: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

@@ -6,8 +6,8 @@ const db = require('../config/db.auth');
 router.get('/', (req, res) => {
   db.query(
     `SELECT p.*, u.full_name 
-     FROM Patients p 
-     LEFT JOIN Users u ON p.user_id = u.user_id`,
+     FROM patients p 
+     LEFT JOIN users u ON p.user_id = u.user_id`,
     (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json(results);
@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 // POST /patients - create basic patient row
 router.post('/', (req, res) => {
   const { name, email, phone, date_of_birth, gender, address } = req.body;
-  const sql = 'INSERT INTO Patients (name, email, phone, date_of_birth, gender, address) VALUES (?, ?, ?, ?, ?, ?)';
+  const sql = 'INSERT INTO patients (name, email, phone, date_of_birth, gender, address) VALUES (?, ?, ?, ?, ?, ?)';
   db.query(sql, [name, email, phone, date_of_birth, gender, address], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Patient added successfully!', patient_id: result.insertId });
@@ -29,7 +29,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { name, email, phone, date_of_birth, gender, address } = req.body;
-  const sql = 'UPDATE Patients SET name = ?, email = ?, phone = ?, date_of_birth = ?, gender = ?, address = ? WHERE patient_id = ?';
+  const sql = 'UPDATE patients SET name = ?, email = ?, phone = ?, date_of_birth = ?, gender = ?, address = ? WHERE patient_id = ?';
   const values = [name, email, phone, date_of_birth, gender, address, id];
   db.query(sql, values, (err) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -40,7 +40,7 @@ router.put('/:id', (req, res) => {
 // DELETE /patients/:id
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-  db.query('DELETE FROM Patients WHERE patient_id = ?', [id], (err) => {
+  db.query('DELETE FROM patients WHERE patient_id = ?', [id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Patient deleted successfully!' });
   });
@@ -52,7 +52,7 @@ router.get('/profile', (req, res) => {
     const { user_id } = req.query;
     if (!user_id) return res.status(400).json({ message: 'user_id is required' });
 
-    const findSql = 'SELECT patient_id, date_of_birth, gender, phone_number, address, emergency_contact FROM Patients WHERE user_id = ? LIMIT 1';
+    const findSql = 'SELECT patient_id, date_of_birth, gender, phone_number, address, emergency_contact FROM patients WHERE user_id = ? LIMIT 1';
     db.query(findSql, [user_id], (err, rows) => {
       if (err) return res.status(500).json({ message: 'Server error' });
       if (!rows || rows.length === 0) {
@@ -79,13 +79,13 @@ router.post('/profile', (req, res) => {
     const { user_id, date_of_birth, gender, phone_number, address, emergency_contact } = req.body;
     if (!user_id) return res.status(400).json({ message: 'user_id is required' });
 
-    const findSql = 'SELECT patient_id FROM Patients WHERE user_id = ? LIMIT 1';
+    const findSql = 'SELECT patient_id FROM patients WHERE user_id = ? LIMIT 1';
     db.query(findSql, [user_id], (findErr, rows) => {
       if (findErr) return res.status(500).json({ message: 'Server error' });
 
       if (rows && rows.length > 0) {
         const patientId = rows[0].patient_id;
-        const updateSql = `UPDATE Patients
+        const updateSql = `UPDATE patients
           SET date_of_birth = ?, gender = ?, phone_number = ?, address = ?, emergency_contact = ?
           WHERE patient_id = ?`;
         const updateValues = [date_of_birth || null, gender || null, phone_number || null, address || null, emergency_contact || null, patientId];
@@ -94,7 +94,7 @@ router.post('/profile', (req, res) => {
           return res.json({ message: 'Profile updated successfully', patient_id: patientId });
         });
       } else {
-        const insertSql = `INSERT INTO Patients (user_id, date_of_birth, gender, phone_number, address, emergency_contact)
+        const insertSql = `INSERT INTO patients (user_id, date_of_birth, gender, phone_number, address, emergency_contact)
           VALUES (?, ?, ?, ?, ?, ?)`;
         const insertValues = [user_id, date_of_birth || null, gender || null, phone_number || null, address || null, emergency_contact || null];
         db.query(insertSql, insertValues, (insErr, result) => {

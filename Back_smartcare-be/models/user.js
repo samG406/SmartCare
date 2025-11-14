@@ -4,7 +4,7 @@ class User {
   static async findByEmail(email) {
     return new Promise((resolve, reject) => {
       db.query(
-        'SELECT * FROM Users WHERE email = ?',
+        'SELECT * FROM users WHERE email = ?',
         [email],
         (error, results) => {
           if (error) {
@@ -19,7 +19,7 @@ class User {
   static async findById(id) {
     return new Promise((resolve, reject) => {
       db.query(
-        'SELECT * FROM Users WHERE id = ?',
+        'SELECT * FROM users WHERE id = ?',
         [id],
         (error, results) => {
           if (error) {

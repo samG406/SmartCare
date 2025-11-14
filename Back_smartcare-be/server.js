@@ -16,7 +16,9 @@ const app = express();
 // CORS configuration - allow both localhost (dev) and production frontend
 const allowedOrigins = [
   "http://localhost:3000",
-  process.env.FRONTEND_URL // Your production frontend URL
+  "http://localhost:3001",
+  "https://smart-care-ashy.vercel.app",
+  process.env.FRONTEND_URL, // Your production frontend URL
 ].filter(Boolean); // Remove undefined values
 
 app.use(cors({
@@ -24,9 +26,17 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // In production, check allowed origins
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      // Log the origin for debugging
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -172,7 +182,7 @@ app.post("/appointments", (req, res) => {
 
     if (!user_id) return res.status(400).json({ error: "patient_id or user_id is required" });
 
-    const findSql = 'SELECT patient_id FROM Patients WHERE user_id = ? LIMIT 1';
+    const findSql = 'SELECT patient_id FROM patients WHERE user_id = ? LIMIT 1';
     db.query(findSql, [user_id], (findErr, rows) => {
       if (findErr) return res.status(500).json({ error: findErr.message });
       if (!rows || rows.length === 0) {
@@ -258,7 +268,7 @@ app.post('/api/patient/profile', (req, res) => {
       return res.status(400).json({ message: 'user_id is required' });
     }
 
-    const findSql = 'SELECT patient_id FROM Patients WHERE user_id = ? LIMIT 1';
+    const findSql = 'SELECT patient_id FROM patients WHERE user_id = ? LIMIT 1';
     db.query(findSql, [user_id], (findErr, rows) => {
       if (findErr) {
         console.error('DB error (find patient):', findErr);
@@ -267,7 +277,7 @@ app.post('/api/patient/profile', (req, res) => {
 
       if (rows && rows.length > 0) {
         const patientId = rows[0].patient_id;
-        const updateSql = `UPDATE Patients
+        const updateSql = `UPDATE patients
           SET date_of_birth = ?, gender = ?, phone_number = ?, address = ?, emergency_contact = ?
           WHERE patient_id = ?`;
         const updateValues = [date_of_birth || null, gender || null, phone_number || null, address || null, emergency_contact || null, patientId];
@@ -279,7 +289,7 @@ app.post('/api/patient/profile', (req, res) => {
           return res.json({ message: 'Profile updated successfully', patient_id: patientId });
         });
       } else {
-        const insertSql = `INSERT INTO Patients (user_id, date_of_birth, gender, phone_number, address, emergency_contact)
+        const insertSql = `INSERT INTO patients (user_id, date_of_birth, gender, phone_number, address, emergency_contact)
           VALUES (?, ?, ?, ?, ?, ?)`;
         const insertValues = [user_id, date_of_birth || null, gender || null, phone_number || null, address || null, emergency_contact || null];
         db.query(insertSql, insertValues, (insErr, result) => {
@@ -307,6 +317,6 @@ const PORT = process.env.PORT || 7070;
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
-  console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+  console.log(`Server running on http://${HOST}:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

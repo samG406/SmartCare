@@ -6,8 +6,8 @@ const db = require('../config/db.auth');
 router.get('/', (req, res) => {
   db.query(
     `SELECT d.*, u.full_name 
-     FROM Doctors d 
-     LEFT JOIN Users u ON d.user_id = u.user_id`,
+     FROM doctors d 
+     LEFT JOIN users u ON d.user_id = u.user_id`,
     (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json(results);
@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 // POST /doctors
 router.post('/', (req, res) => {
   const { name, specialization, email, phone } = req.body;
-  const sql = 'INSERT INTO Doctors (name, specialization, email, phone) VALUES (?, ?, ?, ?)';
+  const sql = 'INSERT INTO doctors (name, specialization, email, phone) VALUES (?, ?, ?, ?)';
   db.query(sql, [name, specialization, email, phone], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Doctor added successfully!', doctor_id: result.insertId });
@@ -29,7 +29,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { name, specialization, email, phone } = req.body;
-  const sql = 'UPDATE Doctors SET name = ?, specialization = ?, email = ?, phone = ? WHERE doctor_id = ?';
+  const sql = 'UPDATE doctors SET name = ?, specialization = ?, email = ?, phone = ? WHERE doctor_id = ?';
   const values = [name, specialization, email, phone, id];
   db.query(sql, values, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -41,7 +41,7 @@ router.put('/:id', (req, res) => {
 // DELETE /doctors/:id
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-  db.query('DELETE FROM Doctors WHERE doctor_id = ?', [id], (err) => {
+  db.query('DELETE FROM doctors WHERE doctor_id = ?', [id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Doctor deleted successfully!' });
   });
@@ -93,10 +93,10 @@ router.post('/profile', (req, res) => {
         const servicesJson = services ? JSON.stringify(services) : null;
         const specsJson = specializations ? JSON.stringify(specializations) : null;
 
-        // If a new full_name is provided, update it on Users table (source of truth)
+        // If a new full_name is provided, update it on users table (source of truth)
         const updateUserName = (cb) => {
           if (!full_name) return cb();
-          db.query('UPDATE Users SET full_name = ? WHERE user_id = ?', [full_name, user_id], (uErr) => cb(uErr));
+          db.query('UPDATE users SET full_name = ? WHERE user_id = ?', [full_name, user_id], (uErr) => cb(uErr));
         };
 
         if (rows && rows.length > 0) {

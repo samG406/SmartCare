@@ -28,31 +28,92 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // Debug logging
+      console.log('Login attempt - API_URL:', API_URL);
+      console.log('Login attempt - Request data:', { email: formData.email, password: '***' });
+      
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
+      
+      console.log('Login response status:', response.status);
+      console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
 
-      const data = await response.json();
+      // Define types for response data
+      type LoginSuccessResponse = {
+        token: string;
+        user: {
+          user_id: number;
+          email: string;
+          role: string;
+          full_name?: string;
+          doctor_id?: number;
+          specialization?: string;
+          phone_number?: string;
+          hospital_affiliation?: string;
+          experience?: string;
+        };
+      };
+
+      type ErrorResponse = {
+        message?: string;
+        error?: string;
+      };
+
+      let data: LoginSuccessResponse | ErrorResponse = {};
+      try {
+        const text = await response.text();
+        console.log('Login response body (raw):', text);
+        if (text) {
+          data = JSON.parse(text) as LoginSuccessResponse | ErrorResponse;
+        } else {
+          data = { message: `Server returned empty response (${response.status})` };
+        }
+      } catch (parseError) {
+        console.error('Failed to parse login response:', parseError);
+        data = { message: `Server error: ${response.status} ${response.statusText}` };
+      }
+
       if (!response.ok) {
-        setError(data.message || 'Login failed');
+        console.error('Login API error:', response.status, data);
+        const errorData = data as ErrorResponse;
+        const errorMessage = errorData?.message || errorData?.error || `Login failed (${response.status})`;
+        setError(errorMessage);
+        setLoading(false);
+        return;
+      }
+
+      // Type assertion for success response
+      const successData = data as LoginSuccessResponse;
+      
+      // Validate required fields
+      if (!successData.token || !successData.user) {
+        setError('Invalid response from server. Missing token or user data.');
+        setLoading(false);
         return;
       }
 
       // Persist auth (ensure doctor_id is preserved when present)
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('token', data.token);
-      setCookie('token', data.token, 1);
-      setCookie('role', (data.user.role || '').toLowerCase(), 1);
+      localStorage.setItem('user', JSON.stringify(successData.user));
+      localStorage.setItem('token', successData.token);
+      setCookie('token', successData.token, 1);
+      setCookie('role', (successData.user.role || '').toLowerCase(), 1);
 
       // Redirect by role
-      const role = (data.user.role || '').toLowerCase();
+      const role = (successData.user.role || '').toLowerCase();
       if (role === 'doctor') router.push('/doctors/dashboard');
       else if (role === 'patient') router.push('/patient/dashboard');
       else router.push('/');
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      console.error('Login error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        setError('Unable to connect to server. Please check your connection and ensure the backend is running.');
+      } else {
+        setError(`Login failed: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

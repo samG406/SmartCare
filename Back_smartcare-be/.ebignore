@@ -1,0 +1,14 @@
+# Elastic Beanstalk ignore file
+# Files and directories listed here will be excluded from deployment
+
+node_modules/
+.git/
+*.log
+.env
+.DS_Store
+deploy.zip
+deploy_temp/
+*.md
+README.md
+DEPLOYMENT_GUIDE.md
+
