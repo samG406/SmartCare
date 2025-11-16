@@ -19,19 +19,7 @@ const dbConfig = {
   reconnect: true,
 };
 
-// Log configuration (without sensitive data)
-console.log('📊 Database Configuration:');
-console.log('  Host:', dbConfig.host);
-console.log('  Database:', dbConfig.database);
-console.log('  Port:', dbConfig.port);
-console.log('  User:', dbConfig.user);
-console.log('  Using Environment Variables:', {
-  DB_HOST: !!process.env.DB_HOST,
-  DB_USER: !!process.env.DB_USER,
-  DB_PASSWORD: !!process.env.DB_PASSWORD,
-  DB_NAME: !!process.env.DB_NAME,
-  NODE_ENV: process.env.NODE_ENV
-});
+// Database configuration loaded
 
 // Only add SSL config for AWS RDS (production)
 if (process.env.DB_HOST || process.env.NODE_ENV === 'production') {

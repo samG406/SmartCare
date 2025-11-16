@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
       amount, 
       status, 
       dateIssued AS dateIssued 
-    FROM Invoices
+    FROM invoices
   `;
   db.query(sql, (err, results) => {
     if (err) {

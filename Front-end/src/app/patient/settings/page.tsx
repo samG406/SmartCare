@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import PatientNavbar from '@/components/PatientNavbar';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 type PatientProfile = {
   date_of_birth: string;
@@ -22,7 +22,9 @@ const defaultProfile: PatientProfile = {
 
 export default function PatientSettingsPage() {
   const [profile, setProfile] = useState<PatientProfile>(defaultProfile);
+  const [originalProfile, setOriginalProfile] = useState<PatientProfile>(defaultProfile);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
@@ -56,12 +58,14 @@ export default function PatientSettingsPage() {
             const cachedKey = `patient_profile_${currentUserId}`;
             const cached = localStorage.getItem(cachedKey);
             if (cached) {
-              setProfile(JSON.parse(cached));
+              const cachedProfile = JSON.parse(cached);
+              setProfile(cachedProfile);
+              setOriginalProfile(cachedProfile);
             }
 
             // Fetch from database to get latest data
             try {
-              const resp = await fetch(`${API_URL}/api/patient/profile?user_id=${currentUserId}`);
+              const resp = await apiFetch(`/api/patient/profile?user_id=${currentUserId}`);
               if (resp.ok) {
                 const data = await resp.json();
                 if (data.profile) {
@@ -75,6 +79,7 @@ export default function PatientSettingsPage() {
                       : ''
                   };
                   setProfile(formattedProfile);
+                  setOriginalProfile(formattedProfile);
                   // Update cache with latest data
                   localStorage.setItem(cachedKey, JSON.stringify(formattedProfile));
                 }
@@ -82,11 +87,18 @@ export default function PatientSettingsPage() {
             } catch (fetchErr) {
               console.error('Failed to fetch profile from database:', fetchErr);
               // If fetch fails, use cached data if available
+            } finally {
+              setLoading(false);
             }
+          } else {
+            setLoading(false);
           }
+        } else {
+          setLoading(false);
         }
       } catch (err) {
         console.error('Error loading profile:', err);
+        setLoading(false);
       }
     };
 
@@ -98,6 +110,14 @@ export default function PatientSettingsPage() {
   ) => {
     const { name, value } = e.target;
     setProfile((p) => ({ ...p, [name]: value }));
+    setSaved(false);
+    setError(null);
+  };
+
+  const handleCancel = () => {
+    setProfile(originalProfile);
+    setIsEditing(false);
+    setError(null);
     setSaved(false);
   };
 
@@ -112,19 +132,35 @@ export default function PatientSettingsPage() {
         const max = new Date(maxDob);
         if (dob > max) {
           setError('Date of birth indicates age under 17.');
+          setSaving(false);
           return;
         }
       }
-      if (profile.phone_number && profile.phone_number.replace(/\D/g, '').length < 10) {
-        setError('Phone number must be at least 10 digits.');
+      if (profile.phone_number && profile.phone_number.replace(/\D/g, '').length !== 10) {
+        setError('Phone number must be exactly 10 digits.');
+        setSaving(false);
         return;
+      }
+      if (profile.emergency_contact) {
+        const emergencyDigits = profile.emergency_contact.replace(/\D/g, '');
+        if (emergencyDigits.length !== 10) {
+          setError('Emergency contact must be exactly 10 digits.');
+          setSaving(false);
+          return;
+        }
+        if (profile.phone_number && emergencyDigits === profile.phone_number.replace(/\D/g, '')) {
+          setError('Emergency contact cannot be the same as phone number.');
+          setSaving(false);
+          return;
+        }
       }
       if (!userId) {
         setError('User not found. Please sign in again.');
+        setSaving(false);
         return;
       }
 
-      const resp = await fetch(`${API_URL}/api/patient/profile`, {
+      const resp = await apiFetch('/api/patient/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,16 +174,34 @@ export default function PatientSettingsPage() {
       });
 
       if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        throw new Error(data.message || 'Failed to save profile');
+        const text = await resp.text();
+        let errorData: { message?: string; error?: string; code?: string } = {};
+        try {
+          if (text && text.trim()) {
+            errorData = JSON.parse(text);
+          }
+        } catch (parseErr) {
+          console.error('Failed to parse error response:', parseErr);
+          errorData = { message: text || 'Unknown error' };
+        }
+        const errorMessage = errorData.message || errorData.error || `Failed to save profile (${resp.status})`;
+        setError(errorMessage);
+        setSaving(false);
+        return;
       }
 
       // Cache locally for quick loads (user-specific cache)
       if (userId) {
         localStorage.setItem(`patient_profile_${userId}`, JSON.stringify(profile));
       }
+      setOriginalProfile(profile);
       setSaved(true);
       setIsEditing(false);
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Unexpected error saving profile:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setSaving(false);
     }
@@ -159,17 +213,34 @@ export default function PatientSettingsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-          <button
-            type="button"
-            onClick={() => setIsEditing((v) => !v)}
-            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            {isEditing ? 'Close' : 'Edit'}
-          </button>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Edit
+            </button>
+          )}
         </div>
 
+        {saved && !isEditing && (
+          <div className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            Profile saved successfully.
+          </div>
+        )}
+
+        {/* Loading state */}
+        {loading && (
+          <div className="bg-white rounded-2xl shadow p-6 mb-6">
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading profile...</p>
+            </div>
+          </div>
+        )}
+
         {/* Read-only profile summary */}
-        {!isEditing && (
+        {!isEditing && !loading && (
           <div className="bg-white rounded-2xl shadow p-6 mb-6">
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
@@ -258,23 +329,51 @@ export default function PatientSettingsPage() {
               type="tel"
               name="phone_number"
               value={profile.phone_number}
-              onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ''); setProfile(p => ({ ...p, phone_number: v })); setSaved(false); }}
+              onChange={(e) => { 
+                const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); 
+                setProfile(p => ({ ...p, phone_number: v })); 
+                setSaved(false);
+                setError(null);
+              }}
               inputMode="numeric"
-              pattern="[0-9]{10,}"
+              pattern="[0-9]{10}"
               minLength={10}
-              maxLength={15}
-              title="Enter at least 10 digits"
+              maxLength={10}
+              title="Enter exactly 10 digits"
               className="w-full md:max-w-sm border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-blue-500 focus:outline-none"
             />
+            {profile.phone_number && profile.phone_number.length !== 10 && (
+              <p className="mt-1 text-xs text-amber-600">Must be exactly 10 digits</p>
+            )}
+            {profile.phone_number && profile.emergency_contact && profile.phone_number === profile.emergency_contact && (
+              <p className="mt-1 text-xs text-red-600">Phone number cannot be the same as emergency contact</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
             <input
+              type="tel"
               name="emergency_contact"
               value={profile.emergency_contact}
-              onChange={handleChange}
+              onChange={(e) => { 
+                const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); 
+                setProfile(p => ({ ...p, emergency_contact: v })); 
+                setSaved(false);
+                setError(null);
+              }}
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              minLength={10}
+              maxLength={10}
+              title="Enter exactly 10 digits"
               className="w-full md:max-w-sm border-2 border-gray-200 rounded-xl px-3 py-2 focus:border-blue-500 focus:outline-none"
             />
+            {profile.emergency_contact && profile.emergency_contact.length !== 10 && (
+              <p className="mt-1 text-xs text-amber-600">Must be exactly 10 digits</p>
+            )}
+            {profile.emergency_contact && profile.phone_number && profile.emergency_contact === profile.phone_number && (
+              <p className="mt-1 text-xs text-red-600">Emergency contact cannot be the same as phone number</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
@@ -287,19 +386,13 @@ export default function PatientSettingsPage() {
           </div>
 
           <div className="md:col-span-2 flex justify-end gap-3">
-            <button type="button" onClick={() => setProfile(defaultProfile)} className="px-6 py-2 border-2 border-gray-300 rounded-xl hover:bg-gray-50">Reset</button>
+            <button type="button" onClick={handleCancel} className="px-6 py-2 border-2 border-gray-300 rounded-xl hover:bg-gray-50">
+              Cancel
+            </button>
             <button type="submit" disabled={saving} className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
-
-          {saved && (
-            <div className="md:col-span-2">
-              <div className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                Profile saved successfully.
-              </div>
-            </div>
-          )}
         </form>
         )}
       </div>

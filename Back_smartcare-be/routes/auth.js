@@ -14,7 +14,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    console.log('Login attempt for email:', email);
 
     // Find user by email
     let user;
@@ -32,11 +31,9 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user) {
-      console.log('User not found for email:', email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    console.log('User found:', { user_id: user.user_id, email: user.email, role: user.role });
 
     // Check if password field exists
     if (!user.password) {
@@ -63,7 +60,6 @@ router.post('/login', async (req, res) => {
     }
 
     if (!isValidPassword) {
-      console.log('Invalid password for email:', email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
@@ -77,7 +73,6 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    console.log("Looking up doctor for user_id:", user.user_id);
     // If doctor, fetch doctor details
     const userRole = (user.role || '').toLowerCase();
     if (userRole === "doctor") {
@@ -108,7 +103,6 @@ router.post('/login', async (req, res) => {
         doctorRows = [];
       }
       
-      console.log("Doctor query result:", doctorRows);
       const doctor = doctorRows[0] || {};
       return res.json({
         token,

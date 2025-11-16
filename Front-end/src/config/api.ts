@@ -4,8 +4,10 @@ const getApiUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   
-  // Production AWS Elastic Beanstalk endpoint
-  return 'http://smartcare-env.eba-vpus5s3b.us-east-2.elasticbeanstalk.com';
+  // Default: Local development server
+  // For production, set NEXT_PUBLIC_API_URL environment variable to AWS endpoint
+  // Example: NEXT_PUBLIC_API_URL=http://smartcare-env.eba-vpus5s3b.us-east-2.elasticbeanstalk.com
+  return 'http://localhost:7070';
 };
 
 export const API_URL = getApiUrl();
@@ -16,13 +18,6 @@ const isHttpBackend = API_URL.startsWith('http://');
 
 // Use proxy route if frontend is HTTPS and backend is HTTP (mixed content issue)
 export const shouldUseProxy = isHttpsFrontend && isHttpBackend;
-
-// Log API URL in development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.log('API URL configured:', API_URL);
-  console.log('Environment variable NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
-  console.log('Using proxy:', shouldUseProxy);
-}
 
 export const apiFetch = async (endpoint: string, options?: RequestInit) => {
   // If we need to use proxy (HTTPS frontend -> HTTP backend), route through Next.js API

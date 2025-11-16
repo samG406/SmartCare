@@ -79,7 +79,7 @@ Healthcare Researchers: Access anonymized patient data for research & AI-driven 
 
 # Additional Integrations:
 
-💳 Payment Gateway: Stripe
+ Payment Gateway: Stripe
 
 # Wireframe & UI Mockups
 
@@ -140,40 +140,103 @@ The ERD below represents the database structure for the SmartHealthcare system.
 ## 2️ Database Tables and Schema
 The SmartHealthcare database consists of the following tables:
 
-###  i. Users Table
+###  i. users Table
 - **Primary Key:** `user_id` (`INT`, `AUTO_INCREMENT`)
-- **Attributes:** `full_name`, `email`, `password`, `role`, `created_at`
+- **Attributes:** 
+  - `full_name` (`VARCHAR`)
+  - `email` (`VARCHAR`, `UNIQUE`)
+  - `password` (`VARCHAR` - hashed with bcrypt)
+  - `role` (`ENUM` - 'patient', 'doctor', 'admin')
+  - `created_at` (`TIMESTAMP`)
 - **No foreign keys**
 
-###  ii. Patients Table
+###  ii. patients Table
 - **Primary Key:** `patient_id` (`INT`, `AUTO_INCREMENT`)
-- **Foreign Key:** `user_id` (references `Users` table)
-- **Attributes:** `date_of_birth`, `gender`, `phone_number`, `address`, `emergency_contact`, `created_at`
+- **Foreign Key:** `user_id` (`INT`, references `users.user_id`)
+- **Attributes:** 
+  - `date_of_birth` (`DATE`)
+  - `gender` (`ENUM` - 'Male', 'Female', 'Other')
+  - `phone_number` (`VARCHAR(10)`, `UNIQUE`)
+  - `address` (`TEXT`)
+  - `emergency_contact` (`VARCHAR(10)`)
+  - `created_at` (`TIMESTAMP`)
 
-###  iii. Doctors Table
+###  iii. doctors Table
 - **Primary Key:** `doctor_id` (`INT`, `AUTO_INCREMENT`)
-- **Foreign Key:** `user_id` (references `Users` table)
-- **Attributes:** `specialization`, `experience`, `phone_number`, `hospital_affiliation`, `created_at`
+- **Foreign Key:** `user_id` (`INT`, references `users.user_id`)
+- **Attributes:** 
+  - `title` (`VARCHAR`)
+  - `department` (`VARCHAR`)
+  - `experience` (`VARCHAR`)
+  - `mobile` (`VARCHAR`)
+  - `hospital_affiliation` (`VARCHAR`)
+  - `created_at` (`TIMESTAMP`)
 
-###  iv. Appointments Table
+###  iv. appointments Table
 - **Primary Key:** `appointment_id` (`INT`, `AUTO_INCREMENT`)
-- **Foreign Keys:** `patient_id` (references `Patients` table), `doctor_id` (references `Doctors` table)
-- **Attributes:** `appointment_date`, `status`, `notes`, `created_at`
+- **Foreign Keys:** 
+  - `patient_id` (`INT`, references `patients.patient_id`)
+  - `doctor_id` (`INT`, references `doctors.doctor_id`)
+- **Attributes:** 
+  - `appointment_date` (`DATETIME`)
+  - `status` (`ENUM` - 'pending', 'confirmed', 'completed', 'cancelled')
+  - `appointment_type` (`ENUM` - 'Consultation', 'Follow-up', 'New Patient')
+  - `notes` (`TEXT`)
+  - `created_at` (`TIMESTAMP`)
 
-###  v. Medical_Records Table
+###  v. medical_records Table
 - **Primary Key:** `record_id` (`INT`, `AUTO_INCREMENT`)
-- **Foreign Keys:** `patient_id` (references `Patients` table), `doctor_id` (references `Doctors` table)
-- **Attributes:** `diagnosis`, `treatment`, `prescription`, `visit_date`, `created_at`
+- **Foreign Keys:** 
+  - `patient_id` (`INT`, references `patients.patient_id`)
+  - `doctor_id` (`INT`, references `doctors.doctor_id`)
+- **Attributes:** 
+  - `diagnosis` (`TEXT`)
+  - `prescription` (`TEXT`)
+  - `visit_date` (`DATE`)
+  - `created_at` (`TIMESTAMP`)
 
-###  vi. Prescriptions Table
+###  vi. scheduletimings Table
+- **Primary Key:** `id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Key:** `doctor_id` (`INT`, references `doctors.doctor_id`)
+- **Attributes:** 
+  - `weekday` (`VARCHAR(20)`)
+  - `start_time` (`TIME`)
+  - `end_time` (`TIME`)
+  - `created_at` (`TIMESTAMP`)
+  - `updated_at` (`TIMESTAMP`)
+
+###  vii. invoices Table
+- **Primary Key:** `invoice_id` (`INT`, `AUTO_INCREMENT`)
+- **Foreign Keys:** 
+  - `patient_id` (`INT`, references `patients.patient_id`)
+  - `appointment_id` (`INT`, references `appointments.appointment_id`)
+- **Attributes:** 
+  - `amount` (`DECIMAL`)
+  - `status` (`VARCHAR`)
+  - `created_at` (`TIMESTAMP`)
+
+###  viii. prescriptions Table (Optional - for future use)
 - **Primary Key:** `prescription_id` (`INT`, `AUTO_INCREMENT`)
-- **Foreign Keys:** `record_id` (references `Medical_Records` table), `patient_id` (references `Patients` table), `doctor_id` (references `Doctors` table)
-- **Attributes:** `medication`, `dosage`, `frequency`, `duration`, `created_at`
+- **Foreign Keys:** 
+  - `record_id` (`INT`, references `medical_records.record_id`)
+  - `patient_id` (`INT`, references `patients.patient_id`)
+  - `doctor_id` (`INT`, references `doctors.doctor_id`)
+- **Attributes:** 
+  - `medication` (`VARCHAR`)
+  - `dosage` (`VARCHAR`)
+  - `frequency` (`VARCHAR`)
+  - `duration` (`VARCHAR`)
+  - `created_at` (`TIMESTAMP`)
 
-###  vii. Permissions Table
+###  ix. permissions Table (Optional - for future use)
 - **Primary Key:** `permission_id` (`INT`, `AUTO_INCREMENT`)
 - **No foreign keys**
-- **Attributes:** `role`, `resource`, `can_read`, `can_write`, `can_delete`
+- **Attributes:** 
+  - `role` (`VARCHAR`)
+  - `resource` (`VARCHAR`)
+  - `can_read` (`BOOLEAN`)
+  - `can_write` (`BOOLEAN`)
+  - `can_delete` (`BOOLEAN`)
 
 ---
 
@@ -182,19 +245,130 @@ Below are some sample queries demonstrating key functionalities of the SmartHeal
 
 ###  → Retrieve all appointments for a specific patient
 ```sql
-SELECT a.appointment_id, a.appointment_date, a.status, u.full_name AS doctor_name
-FROM Appointments a
-JOIN Doctors d ON a.doctor_id = d.doctor_id
-JOIN Users u ON d.user_id = u.user_id
-WHERE a.patient_id = 1;
+SELECT 
+    a.appointment_id, 
+    a.appointment_date, 
+    a.status, 
+    a.appointment_type,
+    u.full_name AS doctor_name,
+    d.department AS doctor_department
+FROM appointments a
+JOIN doctors d ON a.doctor_id = d.doctor_id
+JOIN users u ON d.user_id = u.user_id
+WHERE a.patient_id = 1
+ORDER BY a.appointment_date DESC;
 ```
-###  → List all doctors with their specializations and experience:
 
-``` sql
-SELECT u.full_name, d.specialization, d.experience 
-FROM Doctors d 
-JOIN Users u ON d.user_id = u.user_id 
+###  → List all doctors with their departments and experience
+```sql
+SELECT 
+    u.full_name, 
+    d.title,
+    d.department, 
+    d.experience,
+    d.hospital_affiliation
+FROM doctors d 
+JOIN users u ON d.user_id = u.user_id 
 ORDER BY d.experience DESC; 
+```
+
+###  → Get patient profile with user information
+```sql
+SELECT 
+    p.patient_id,
+    u.full_name,
+    u.email,
+    p.date_of_birth,
+    p.gender,
+    p.phone_number,
+    p.address,
+    p.emergency_contact
+FROM patients p
+JOIN users u ON p.user_id = u.user_id
+WHERE p.user_id = ?;
+```
+
+###  → Get doctor's schedule timings
+```sql
+SELECT 
+    weekday,
+    start_time,
+    end_time
+FROM scheduletimings
+WHERE doctor_id = ?
+ORDER BY 
+    FIELD(weekday, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+```
+
+###  → Get upcoming appointments for a doctor
+```sql
+SELECT 
+    a.appointment_id,
+    a.appointment_date,
+    a.status,
+    a.appointment_type,
+    u.full_name AS patient_name,
+    p.phone_number AS patient_phone
+FROM appointments a
+JOIN patients p ON a.patient_id = p.patient_id
+JOIN users u ON p.user_id = u.user_id
+WHERE a.doctor_id = ?
+    AND a.appointment_date >= NOW()
+    AND a.status IN ('pending', 'confirmed')
+ORDER BY a.appointment_date ASC;
+```
+
+###  → Get medical records for a patient
+```sql
+SELECT 
+    mr.record_id,
+    mr.visit_date,
+    mr.diagnosis,
+    mr.prescription,
+    u.full_name AS doctor_name,
+    d.department
+FROM medical_records mr
+JOIN doctors d ON mr.doctor_id = d.doctor_id
+JOIN users u ON d.user_id = u.user_id
+WHERE mr.patient_id = ?
+ORDER BY mr.visit_date DESC;
+```
+
+###  → Count appointments by status for a patient
+```sql
+SELECT 
+    status,
+    COUNT(*) AS count
+FROM appointments
+WHERE patient_id = ?
+GROUP BY status;
+```
+
+###  → Find available time slots for a doctor on a specific day
+```sql
+SELECT 
+    weekday,
+    start_time,
+    end_time
+FROM scheduletimings
+WHERE doctor_id = ?
+    AND weekday = ?;
+```
+
+###  → Get invoices for a patient
+```sql
+SELECT 
+    i.invoice_id,
+    i.amount,
+    i.status,
+    a.appointment_date,
+    u.full_name AS doctor_name
+FROM invoices i
+JOIN appointments a ON i.appointment_id = a.appointment_id
+JOIN doctors d ON a.doctor_id = d.doctor_id
+JOIN users u ON d.user_id = u.user_id
+WHERE i.patient_id = ?
+ORDER BY i.created_at DESC;
 ```
 
 

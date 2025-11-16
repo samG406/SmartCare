@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import PatientNavbar from '@/components/PatientNavbar';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 interface Doctor {
   doctor_id: number;
@@ -67,7 +67,7 @@ export default function BookingPage() {
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const res = await fetch(`${API_URL}/doctors`);
+        const res = await apiFetch('/doctors');
         if (res.ok) {
           const data = await res.json();
           setDoctors(data);
@@ -86,8 +86,29 @@ export default function BookingPage() {
       return;
     }
     setScheduleLoading(true);
-    fetch(`${API_URL}/api/timings/${selectedDoctor}`)
-      .then(res => res.ok ? res.json() : {})
+    apiFetch(`/api/timings/${selectedDoctor}`)
+      .then(async res => {
+        const text = await res.text();
+        
+        if (res.ok) {
+          try {
+            const data = text ? JSON.parse(text) : {};
+            return data;
+          } catch (parseErr) {
+            console.error('Failed to parse timings response:', parseErr);
+            return {};
+          }
+        } else {
+          try {
+            const errorData = text ? JSON.parse(text) : { error: 'Empty error response' };
+            console.error('Failed to fetch schedule:', res.status, errorData.error || errorData.message);
+            return {};
+          } catch (parseErr) {
+            console.error('Failed to parse error response:', parseErr);
+            return {};
+          }
+        }
+      })
       .then(data => {
         setSchedule(data || {});
       })
@@ -144,7 +165,7 @@ export default function BookingPage() {
         return;
       }
 
-      const res = await fetch(`${API_URL}/appointments`, {
+      const res = await apiFetch('/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -197,14 +218,14 @@ export default function BookingPage() {
       if (!userId) return;
 
       // Get patient_id for this user
-      const pRes = await fetch(`${API_URL}/patients`);
+      const pRes = await apiFetch('/patients');
       if (!pRes.ok) return;
       const patients = (await pRes.json()) as PatientRow[];
       const patient = Array.isArray(patients) ? patients.find((p: PatientRow) => p.user_id === userId) : null;
       if (!patient?.patient_id) return;
 
       // Get all appointments for this patient
-      const aRes = await fetch(`${API_URL}/appointments`);
+      const aRes = await apiFetch('/appointments');
       if (!aRes.ok) return;
       const appts = (await aRes.json()) as AppointmentRow[];
       const mine = (Array.isArray(appts) ? appts : []).filter((a: AppointmentRow) => a.patient_id === patient.patient_id);
@@ -212,7 +233,7 @@ export default function BookingPage() {
       mine.sort((a: AppointmentRow, b: AppointmentRow) => new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime());
 
       // Fetch doctor for display
-      const dRes = await fetch(`${API_URL}/doctors`);
+      const dRes = await apiFetch('/doctors');
       const docs = (dRes.ok ? (await dRes.json()) : []) as Doctor[];
       const list: BookingSummary[] = mine.map((a: AppointmentRow) => {
         const d = Array.isArray(docs) ? docs.find((doc: Doctor) => doc.doctor_id === a.doctor_id) : null;

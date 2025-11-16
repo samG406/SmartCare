@@ -28,17 +28,11 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Debug logging
-      console.log('Login attempt - Request data:', { email: formData.email, password: '***' });
-      
       const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-      
-      console.log('Login response status:', response.status);
-      console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
 
       // Define types for response data
       type LoginSuccessResponse = {
@@ -64,7 +58,6 @@ export default function LoginPage() {
       let data: LoginSuccessResponse | ErrorResponse = {};
       try {
         const text = await response.text();
-        console.log('Login response body (raw):', text);
         if (text) {
           data = JSON.parse(text) as LoginSuccessResponse | ErrorResponse;
         } else {
@@ -76,7 +69,6 @@ export default function LoginPage() {
       }
 
       if (!response.ok) {
-        console.error('Login API error:', response.status, data);
         const errorData = data as ErrorResponse;
         const errorMessage = errorData?.message || errorData?.error || `Login failed (${response.status})`;
         setError(errorMessage);

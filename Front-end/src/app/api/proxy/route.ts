@@ -87,10 +87,29 @@ async function proxyRequest(endpoint: string, method: string, body: Record<strin
     fetchOptions.body = JSON.stringify(restBody);
   }
 
-  const response = await fetch(url, fetchOptions);
-  const data = await response.json().catch(() => ({ error: 'Failed to parse response' }));
-  
-  return NextResponse.json(data, { status: response.status });
+  try {
+    const response = await fetch(url, fetchOptions);
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (parseErr) {
+      console.error('Proxy: Failed to parse backend response:', parseErr);
+      data = { error: 'Failed to parse response', raw: text };
+    }
+    
+    return NextResponse.json(data, { status: response.status });
+  } catch (fetchErr) {
+    console.error('Proxy: Fetch error:', fetchErr);
+    return NextResponse.json(
+      { 
+        error: 'Proxy request failed',
+        details: fetchErr instanceof Error ? fetchErr.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
 }
 
 

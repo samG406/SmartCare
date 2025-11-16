@@ -3,39 +3,58 @@ const db = require('../config/db.auth');
 // GET /api/timings/:doctorId
 // Returns schedule timings grouped by weekday for a doctor
 exports.getTimingsForDoctor = (req, res) => {
-  const { doctorId } = req.params;
+  try {
+    const { doctorId } = req.params;
 
-  if (!doctorId) {
-    return res.status(400).json({ error: 'Doctor ID is required' });
-  }
-
-  const sql = `
-    SELECT weekday, start_time, end_time
-    FROM ScheduleTimings
-    WHERE doctor_id = ?
-    ORDER BY weekday, start_time
-  `;
-
-  db.query(sql, [doctorId], (err, results) => {
-    if (err) {
-      console.error('Error fetching timings:', err);
-      return res.status(500).json({ error: 'Failed to fetch schedule timings' });
+    if (!doctorId) {
+      return res.status(400).json({ error: 'Doctor ID is required' });
     }
 
-    // Group by weekday
-    const grouped = {};
-    results.forEach(row => {
-      if (!grouped[row.weekday]) {
-        grouped[row.weekday] = [];
-      }
-      grouped[row.weekday].push({
-        start: row.start_time,
-        end: row.end_time
-      });
-    });
+    const sql = `
+      SELECT weekday, start_time, end_time
+      FROM scheduletimings
+      WHERE doctor_id = ?
+      ORDER BY weekday, start_time
+    `;
 
-    res.json(grouped);
-  });
+    db.query(sql, [doctorId], (err, results) => {
+      if (err) {
+        console.error('Database error fetching timings:', err.message || err.sqlMessage);
+        
+        if (!res.headersSent) {
+          return res.status(500).json({ 
+            error: 'Failed to fetch schedule timings',
+            details: err.message || err.sqlMessage || 'Unknown database error'
+          });
+        }
+        return;
+      }
+
+      // Group by weekday
+      const grouped = {};
+      if (results && Array.isArray(results)) {
+        results.forEach(row => {
+          if (!grouped[row.weekday]) {
+            grouped[row.weekday] = [];
+          }
+          grouped[row.weekday].push({
+            start: row.start_time,
+            end: row.end_time
+          });
+        });
+      }
+
+      res.json(grouped);
+    });
+  } catch (error) {
+    console.error('Exception in getTimingsForDoctor:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        error: 'Internal server error',
+        details: error.message
+      });
+    }
+  }
 };
 
 // POST /api/timings
@@ -49,7 +68,7 @@ exports.saveTimings = (req, res) => {
   }
 
   // Delete existing timings for this doctor and weekday
-  const deleteSql = 'DELETE FROM ScheduleTimings WHERE doctor_id = ? AND weekday = ?';
+  const deleteSql = 'DELETE FROM scheduletimings WHERE doctor_id = ? AND weekday = ?';
   
   db.query(deleteSql, [doctor_id, weekday], (deleteErr) => {
     if (deleteErr) {
@@ -63,7 +82,7 @@ exports.saveTimings = (req, res) => {
     }
 
     // Insert new timings
-    const insertSql = 'INSERT INTO ScheduleTimings (doctor_id, weekday, start_time, end_time) VALUES ?';
+    const insertSql = 'INSERT INTO scheduletimings (doctor_id, weekday, start_time, end_time) VALUES ?';
     const values = intervals.map(interval => [doctor_id, weekday, interval.start, interval.end]);
 
     db.query(insertSql, [values], (insertErr) => {

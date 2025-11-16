@@ -63,7 +63,7 @@ app.use('/api/timings', timingsRoutes);     // timings endpoints
 // Protect deleting appointments - Only Admin can access
 app.delete("/appointments/:id", verifyToken, authorizeRoles("Admin"), (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM Appointments WHERE appointment_id = ?", [id], (err, result) => {
+  db.query("DELETE FROM appointments WHERE appointment_id = ?", [id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Appointment deleted successfully!" });
   });
@@ -83,7 +83,7 @@ app.post("/signup", (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
   }
 
-  const sql = "INSERT INTO Users (name, email, password) VALUES (?, ?, ?)";
+  const sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
   db.query(sql, [name, email, password], (err, result) => {
     if (err) {
       console.error("Signup error:", err.message);
@@ -109,7 +109,7 @@ app.post("/login", (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
-  const sql = "SELECT * FROM Users WHERE email = ? AND password = ?";
+  const sql = "SELECT * FROM users WHERE email = ? AND password = ?";
   db.query(sql, [email, password], (err, results) => {
     if (err) {
       console.error("Login error:", err.message);
@@ -131,7 +131,7 @@ app.post("/login", (req, res) => {
 
 // Fetch all appointments
 app.get("/appointments", (req, res) => {
-  db.query("SELECT * FROM Appointments", (err, results) => {
+  db.query("SELECT * FROM appointments", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
@@ -139,7 +139,7 @@ app.get("/appointments", (req, res) => {
 
 // Fetch all medical records
 app.get("/medical-records", (req, res) => {
-  db.query("SELECT * FROM MedicalRecords", (err, results) => {
+  db.query("SELECT * FROM medical_records", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
@@ -152,7 +152,7 @@ app.post("/appointments", (req, res) => {
 
   // Ensure columns exist (MySQL 8+ supports IF NOT EXISTS)
   const alterSql = `
-    ALTER TABLE Appointments
+    ALTER TABLE appointments
       ADD COLUMN IF NOT EXISTS appointment_type ENUM('Consultation','Follow-up','New Patient') NULL,
       ADD COLUMN IF NOT EXISTS notes TEXT NULL;
   `;
@@ -160,7 +160,7 @@ app.post("/appointments", (req, res) => {
   db.query(alterSql, (alterErr) => {
     if (alterErr && alterErr.code !== 'ER_PARSE_ERROR') {
       // Some MySQL variants may not support IF NOT EXISTS in ALTER; ignore parse error
-      console.warn('ALTER TABLE Appointments warning:', alterErr.message);
+      console.warn('ALTER TABLE appointments warning:', alterErr.message);
     }
 
     const allowedTypes = new Set(['consultation','follow-up','new patient']);
@@ -169,7 +169,7 @@ app.post("/appointments", (req, res) => {
       (normType === 'consultation' ? 'Consultation' : normType === 'follow-up' ? 'Follow-up' : 'New Patient') : null;
 
     const insert = (resolvedPatientId) => {
-      const sql = `INSERT INTO Appointments (patient_id, doctor_id, appointment_date, status, appointment_type, notes)
+      const sql = `INSERT INTO appointments (patient_id, doctor_id, appointment_date, status, appointment_type, notes)
                    VALUES (?, ?, ?, ?, ?, ?)`;
       const values = [resolvedPatientId, doctor_id, appointment_date, status || 'pending', finalType, notes || null];
       db.query(sql, values, (err, result) => {
@@ -196,7 +196,7 @@ app.post("/appointments", (req, res) => {
 // Add a new medical record
 app.post("/medical-records", (req, res) => {
   const { patient_id, doctor_id, diagnosis, prescription } = req.body;
-  const sql = "INSERT INTO MedicalRecords (patient_id, doctor_id, diagnosis, prescription) VALUES (?, ?, ?, ?)";
+  const sql = "INSERT INTO medical_records (patient_id, doctor_id, diagnosis, prescription) VALUES (?, ?, ?, ?)";
   db.query(sql, [patient_id, doctor_id, diagnosis, prescription], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Medical record added successfully!", record_id: result.insertId });
@@ -210,15 +210,12 @@ app.put("/appointments/:id", (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  console.log("Incoming PUT /appointments/:id");
-  console.log("Params ID:", id);
-  console.log("New Status:", status);
 
   if (!status) {
     return res.status(400).json({ error: "Status is required" });
   }
 
-  const sql = `UPDATE Appointments SET status = ? WHERE appointment_id = ?`;
+  const sql = `UPDATE appointments SET status = ? WHERE appointment_id = ?`;
   db.query(sql, [status, id], (err, result) => {
     if (err) {
       console.error("❌ SQL Error:", err.message); // 👈 very helpful
@@ -232,7 +229,7 @@ app.put("/appointments/:id", (req, res) => {
 app.put("/medical-records/:id", (req, res) => {
   const { id } = req.params;
   const { patient_id, doctor_id, diagnosis, prescription } = req.body;
-  const sql = `UPDATE MedicalRecords SET patient_id = ?, doctor_id = ?, diagnosis = ?, prescription = ? WHERE record_id = ?`;
+  const sql = `UPDATE medical_records SET patient_id = ?, doctor_id = ?, diagnosis = ?, prescription = ? WHERE record_id = ?`;
   const values = [patient_id, doctor_id, diagnosis, prescription, id];
   db.query(sql, values, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -245,7 +242,7 @@ app.put("/medical-records/:id", (req, res) => {
 
 app.delete("/appointments/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM Appointments WHERE appointment_id = ?", [id], (err, result) => {
+  db.query("DELETE FROM appointments WHERE appointment_id = ?", [id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Appointment deleted successfully!" });
   });
@@ -253,59 +250,13 @@ app.delete("/appointments/:id", (req, res) => {
 
 app.delete("/medical-records/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM MedicalRecords WHERE record_id = ?", [id], (err, result) => {
+  db.query("DELETE FROM medical_records WHERE record_id = ?", [id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Medical record deleted successfully!" });
   });
 });
 
-// Save or update a patient's profile (by user_id)
-app.post('/api/patient/profile', (req, res) => {
-  try {
-    const { user_id, date_of_birth, gender, phone_number, address, emergency_contact } = req.body;
-
-    if (!user_id) {
-      return res.status(400).json({ message: 'user_id is required' });
-    }
-
-    const findSql = 'SELECT patient_id FROM patients WHERE user_id = ? LIMIT 1';
-    db.query(findSql, [user_id], (findErr, rows) => {
-      if (findErr) {
-        console.error('DB error (find patient):', findErr);
-        return res.status(500).json({ message: 'Server error' });
-      }
-
-      if (rows && rows.length > 0) {
-        const patientId = rows[0].patient_id;
-        const updateSql = `UPDATE patients
-          SET date_of_birth = ?, gender = ?, phone_number = ?, address = ?, emergency_contact = ?
-          WHERE patient_id = ?`;
-        const updateValues = [date_of_birth || null, gender || null, phone_number || null, address || null, emergency_contact || null, patientId];
-        db.query(updateSql, updateValues, (updErr) => {
-          if (updErr) {
-            console.error('DB error (update patient):', updErr);
-            return res.status(500).json({ message: 'Failed to update profile' });
-      }
-          return res.json({ message: 'Profile updated successfully', patient_id: patientId });
-        });
-      } else {
-        const insertSql = `INSERT INTO patients (user_id, date_of_birth, gender, phone_number, address, emergency_contact)
-          VALUES (?, ?, ?, ?, ?, ?)`;
-        const insertValues = [user_id, date_of_birth || null, gender || null, phone_number || null, address || null, emergency_contact || null];
-        db.query(insertSql, insertValues, (insErr, result) => {
-          if (insErr) {
-            console.error('DB error (insert patient):', insErr);
-            return res.status(500).json({ message: 'Failed to save profile' });
-        }
-          return res.status(201).json({ message: 'Profile created successfully', patient_id: result.insertId });
-      });
-      }
-    });
-  } catch (e) {
-    console.error('Profile save error:', e);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
+// Note: Patient profile route is handled by patientRoutes at /api/patient/profile
 
 
 

@@ -41,23 +41,16 @@ export default function SignupPage() {
             role: form.role,
           };
 
-      // Debug logging
-      console.log('Signup attempt - Request data:', { ...submitForm, password: '***' });
-      
       const res = await apiFetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitForm),
       });
-      
-      console.log('Signup response status:', res.status);
-      console.log('Signup response headers:', Object.fromEntries(res.headers.entries()));
 
       if (!res.ok) {
         let data = {};
         try {
           const text = await res.text();
-          console.log('Signup response body (raw):', text);
           if (text) {
             data = JSON.parse(text);
           } else {
@@ -67,7 +60,6 @@ export default function SignupPage() {
           console.error('Failed to parse signup response:', parseError);
           data = { message: `Server error: ${res.status} ${res.statusText}` };
         }
-        console.error('Signup API error:', res.status, data);
         const errorData = data as { message?: string; error?: string };
         const errorMessage = errorData?.message || errorData?.error || `Registration failed (${res.status})`;
         if (errorMessage.toLowerCase().includes('already registered')) {
