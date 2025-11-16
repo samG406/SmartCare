@@ -1,14 +1,12 @@
 'use client';
 
 /**
- * 🎓 PRACTICE PAGE: API Caching with useFetchWithCache
+ * Practice Page: API Caching with useFetchWithCache
  * 
- * This page lets you EXPERIMENT and UNDERSTAND how the cache works!
- * 
- * Try these scenarios:
- * 1. Load the same URL twice → second time is instant (from cache)
- * 2. Load multiple components with same URL → only ONE API call (parallel handling)
- * 3. Invalidate cache → next fetch goes to API again
+ * Test scenarios:
+ * 1. Load the same URL twice - second time is instant (from cache)
+ * 2. Load multiple components with same URL - only ONE API call (parallel handling)
+ * 3. Invalidate cache - next fetch goes to API again
  * 4. Watch the network tab to see when real API calls happen
  */
 
@@ -28,7 +26,7 @@ export default function PracticeCachePage() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            🎓 Practice: API Caching Hook
+            Practice: API Caching Hook
           </h1>
           <p className="text-gray-600">
             Learn by doing! Watch how caching works in real-time.
@@ -37,7 +35,7 @@ export default function PracticeCachePage() {
 
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">🎮 Test Controls</h2>
+          <h2 className="text-xl font-semibold mb-4">Test Controls</h2>
           
           <div className="space-y-4">
             <div>
@@ -58,14 +56,14 @@ export default function PracticeCachePage() {
                 onClick={() => cacheUtils.clear()}
                 className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
               >
-                🗑️ Clear All Cache
+                Clear All Cache
               </button>
               
               <button
                 onClick={() => cacheUtils.invalidate(testUrl)}
                 className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition"
               >
-                🔄 Invalidate This URL
+                Invalidate This URL
               </button>
 
               <div className="flex items-center gap-2">
@@ -84,8 +82,8 @@ export default function PracticeCachePage() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
               <p className="text-sm text-blue-800">
-                <strong>💡 Tip:</strong> Open DevTools Network tab to see when real API calls happen!
-                Cache hits = no network request = instant ⚡
+                <strong>Tip:</strong> Open DevTools Network tab to see when real API calls happen!
+                Cache hits = no network request = instant
               </p>
             </div>
           </div>
@@ -101,7 +99,7 @@ export default function PracticeCachePage() {
         {/* Example Component 2 (same URL - shows cache in action) */}
         <DataComponent 
           url={testUrl} 
-          title="Component 2 (Same URL = Cache Hit!)" 
+          title="Component 2 (Same URL = Cache Hit)" 
           color="green" 
         />
 
@@ -134,8 +132,7 @@ export default function PracticeCachePage() {
 }
 
 /**
- * 📦 REUSABLE COMPONENT
- * This component uses the hook - notice how simple it is!
+ * Reusable component using the hook
  */
 interface DataComponentProps {
   url: string;
@@ -164,14 +161,14 @@ function DataComponent({ url, title, color }: DataComponentProps) {
             className="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition"
             title="Force fresh fetch"
           >
-            🔄 Refetch
+            Refetch
           </button>
           <button
             onClick={() => invalidate()}
             className="px-3 py-1 text-xs bg-red-200 hover:bg-red-300 rounded transition"
             title="Remove from cache"
           >
-            🗑️ Invalidate
+            Invalidate
           </button>
         </div>
       </div>
@@ -183,7 +180,7 @@ function DataComponent({ url, title, color }: DataComponentProps) {
 
         {loading && (
           <div className="flex items-center gap-2 text-blue-600">
-            <span className="animate-spin">⏳</span>
+            <span className="animate-spin">Loading...</span>
             <span>Loading from API...</span>
           </div>
         )}
@@ -191,7 +188,7 @@ function DataComponent({ url, title, color }: DataComponentProps) {
         {!loading && data && (
           <div className="mt-4">
             <div className="bg-green-100 border border-green-300 rounded p-2 mb-2">
-              <span className="text-green-800 text-sm font-medium">✅ Cached Data (or fresh from API)</span>
+              <span className="text-green-800 text-sm font-medium">Cached Data (or fresh from API)</span>
             </div>
             <pre className="bg-gray-800 text-green-400 p-4 rounded-md overflow-auto text-xs max-h-64">
               {JSON.stringify(data, null, 2)}
@@ -201,7 +198,7 @@ function DataComponent({ url, title, color }: DataComponentProps) {
 
         {error && (
           <div className="bg-red-100 border border-red-300 rounded p-3">
-            <p className="text-red-800 text-sm font-medium">❌ Error:</p>
+            <p className="text-red-800 text-sm font-medium">Error:</p>
             <p className="text-red-600 text-sm">{error.message}</p>
           </div>
         )}
@@ -215,8 +212,7 @@ function DataComponent({ url, title, color }: DataComponentProps) {
 }
 
 /**
- * 📊 CACHE STATS PANEL
- * Shows you what's in the cache right now
+ * Cache stats panel - shows current cache state
  */
 function CacheStatsPanel() {
   const [, setRefresh] = useState(0);
@@ -232,7 +228,7 @@ function CacheStatsPanel() {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mt-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">📊 Cache Statistics</h2>
+        <h2 className="text-xl font-semibold">Cache Statistics</h2>
         <span className="text-sm text-gray-500">Auto-refreshing...</span>
       </div>
       
@@ -243,18 +239,18 @@ function CacheStatsPanel() {
         </div>
         
         <div className="bg-blue-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-900">⚡</div>
+          <div className="text-2xl font-bold text-blue-900">Memory</div>
           <div className="text-sm text-blue-600">Memory Cache</div>
         </div>
         
         <div className="bg-green-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-900">∞</div>
+          <div className="text-2xl font-bold text-green-900">Persistent</div>
           <div className="text-sm text-green-600">Persists Until Clear</div>
         </div>
       </div>
 
       <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-        <h3 className="font-semibold text-yellow-900 mb-2">🎓 Learning Points:</h3>
+        <h3 className="font-semibold text-yellow-900 mb-2">Learning Points:</h3>
         <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
           <li><strong>Cache Hit:</strong> Same URL requested again → instant data, no API call</li>
           <li><strong>Parallel Requests:</strong> Multiple components request same URL → only 1 API call shared</li>

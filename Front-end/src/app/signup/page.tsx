@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/config/api';
 
 export default function SignupPage() {
-  const router = useRouter();
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -56,8 +54,7 @@ export default function SignupPage() {
           } else {
             data = { message: `Server returned empty response (${res.status})` };
           }
-        } catch (parseError) {
-          console.error('Failed to parse signup response:', parseError);
+        } catch {
           data = { message: `Server error: ${res.status} ${res.statusText}` };
         }
         const errorData = data as { message?: string; error?: string };
@@ -80,7 +77,9 @@ export default function SignupPage() {
       const loginData = await loginResp.json();
       if (!loginResp.ok) {
         setSuccess('Registration successful! Please sign in.');
-        setTimeout(() => router.push('/login'), 1200);
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1200);
         return;
       }
 
@@ -92,12 +91,20 @@ export default function SignupPage() {
         setCookie('token', loginData.token, 1);
         setCookie('role', (loginData.user.role || '').toLowerCase(), 1);
       } catch {}
+      
+      // Redirect by role - use window.location for full page reload
+      // This ensures cookies are available to middleware on the next request
       const role = (loginData.user.role || '').toLowerCase();
-      if (role === 'doctor') router.push('/doctors/dashboard');
-      else if (role === 'patient') router.push('/patient/dashboard');
-      else router.push('/');
+      let redirectPath = '/';
+      if (role === 'doctor') redirectPath = '/doctors/dashboard';
+      else if (role === 'patient') redirectPath = '/patient/dashboard';
+      
+      // Use window.location.href for immediate redirect with cookie support
+      // Small delay ensures cookies are set before navigation
+      setTimeout(() => {
+        window.location.href = redirectPath;
+      }, 100);
     } catch (err) {
-      console.error('Signup error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
         setError('Unable to connect to server. Please check your connection and ensure the backend is running.');

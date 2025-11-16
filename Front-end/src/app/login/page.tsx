@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { setCookie } from '@/lib/cookies';
 import { apiFetch } from '@/config/api';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -63,8 +61,7 @@ export default function LoginPage() {
         } else {
           data = { message: `Server returned empty response (${response.status})` };
         }
-      } catch (parseError) {
-        console.error('Failed to parse login response:', parseError);
+      } catch {
         data = { message: `Server error: ${response.status} ${response.statusText}` };
       }
 
@@ -92,13 +89,19 @@ export default function LoginPage() {
       setCookie('token', successData.token, 1);
       setCookie('role', (successData.user.role || '').toLowerCase(), 1);
 
-      // Redirect by role
+      // Redirect by role - use window.location for full page reload
+      // This ensures cookies are available to middleware on the next request
       const role = (successData.user.role || '').toLowerCase();
-      if (role === 'doctor') router.push('/doctors/dashboard');
-      else if (role === 'patient') router.push('/patient/dashboard');
-      else router.push('/');
+      let redirectPath = '/';
+      if (role === 'doctor') redirectPath = '/doctors/dashboard';
+      else if (role === 'patient') redirectPath = '/patient/dashboard';
+      
+      // Use window.location.href for immediate redirect with cookie support
+      // Small delay ensures cookies are set before navigation
+      setTimeout(() => {
+        window.location.href = redirectPath;
+      }, 100);
     } catch (err) {
-      console.error('Login error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
         setError('Unable to connect to server. Please check your connection and ensure the backend is running.');

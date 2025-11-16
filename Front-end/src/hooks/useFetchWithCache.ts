@@ -1,27 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
- * 🎓 LEARNING: API Caching Custom Hook
+ * API Caching Custom Hook
  * 
- * CONCEPTS EXPLAINED:
- * 
- * 1. MEMORY CACHING
- *    - Store API responses in a JavaScript Map (like a dictionary)
- *    - Map is OUTSIDE the component so it persists between renders
- *    - Key = URL, Value = { data, timestamp, promise }
- * 
- * 2. PARALLEL REQUESTS
- *    - If multiple components request the same URL at the SAME time
- *    - We don't want to make multiple API calls
- *    - Store the ongoing Promise and share it!
- * 
- * 3. CACHE INVALIDATION
- *    - Sometimes you want fresh data
- *    - Options: invalidate by URL, invalidate all, or time-based expiry
+ * Features:
+ * 1. Memory caching - Store API responses in a Map outside component
+ * 2. Parallel request handling - Share ongoing Promises to prevent duplicate requests
+ * 3. Cache invalidation - Manual and time-based expiry support
  */
 
-// Cache storage (OUTSIDE component = persists across all component instances)
-// This is our "memory" - think of it like a shared notebook
+// Cache storage (outside component = persists across all component instances)
 interface CacheEntry<T> {
   data: T;                    // The actual response data
   timestamp: number;          // When we cached it
@@ -51,12 +39,12 @@ export interface UseFetchWithCacheResult<T> {
 }
 
 /**
- * 🚀 THE HOOK: useFetchWithCache
+ * useFetchWithCache Hook
  * 
- * How it works:
- * 1. Check cache first → if found and fresh → return cached data
- * 2. Check if request already in progress → share that Promise
- * 3. Otherwise → make new fetch, cache it, and return
+ * Flow:
+ * 1. Check cache first - if found and fresh, return cached data
+ * 2. Check if request already in progress - share that Promise
+ * 3. Otherwise - make new fetch, cache it, and return
  */
 export function useFetchWithCache<T = unknown>(
   url: string | null,
@@ -88,10 +76,8 @@ export function useFetchWithCache<T = unknown>(
   }, []);
 
   /**
-   * 🔍 CACHE LOOKUP FUNCTION
-   * Returns cached data if:
-   * - It exists in cache
-   * - It hasn't expired (based on TTL)
+   * Cache lookup function
+   * Returns cached data if it exists and hasn't expired
    */
   const getCachedData = useCallback((key: string): T | null => {
     const entry = cache.get(key);
@@ -108,8 +94,7 @@ export function useFetchWithCache<T = unknown>(
   }, [ttl]);
 
   /**
-   * 📥 FETCH FUNCTION
-   * This is where the magic happens!
+   * Fetch function - handles caching and parallel requests
    */
   const fetchData = useCallback(async (forceRefresh = false): Promise<void> => {
     // Skip if no URL or disabled
@@ -125,7 +110,7 @@ export function useFetchWithCache<T = unknown>(
     if (!forceRefresh) {
       const cached = getCachedData(key);
       if (cached !== null) {
-        // 🎉 Cache hit! Return immediately
+        // Cache hit - return immediately
         setData(cached);
         setLoading(false);
         setError(null);
@@ -135,7 +120,7 @@ export function useFetchWithCache<T = unknown>(
       // Step 2: Check if same request is already in progress
       const existingEntry = cache.get(key);
       if (existingEntry?.promise) {
-        // 🔄 Parallel request detected! Share the existing Promise
+        // Parallel request detected - share the existing Promise
         try {
           const sharedData = await existingEntry.promise;
           if (isMountedRef.current) {
@@ -222,14 +207,14 @@ export function useFetchWithCache<T = unknown>(
   }, [fetchData]);
 
   /**
-   * 🔄 REFETCH: Force fresh data (bypasses cache)
+   * Refetch - Force fresh data (bypasses cache)
    */
   const refetch = useCallback(async () => {
     await fetchData(true);
   }, [fetchData]);
 
   /**
-   * 🗑️ INVALIDATE: Remove specific URL from cache
+   * Invalidate - Remove specific URL from cache
    */
   const invalidate = useCallback(() => {
     if (!url) return;
@@ -240,7 +225,7 @@ export function useFetchWithCache<T = unknown>(
   }, [url, cacheKey, fetchOptions]);
 
   /**
-   * 🧹 INVALIDATE ALL: Clear entire cache
+   * Invalidate all - Clear entire cache
    */
   const invalidateAll = useCallback(() => {
     cache.clear();
@@ -257,8 +242,8 @@ export function useFetchWithCache<T = unknown>(
 }
 
 /**
- * 🎯 BONUS: Standalone cache utility functions
- * These can be used outside the hook!
+ * Standalone cache utility functions
+ * Can be used outside the hook
  */
 export const cacheUtils = {
   /**
