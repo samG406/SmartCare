@@ -1,11 +1,11 @@
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-const { verifyToken, authorizeRoles } = require("./middleware/authMiddleware");// Import middleware
+const { verifyToken, authorizeRoles } = require("./middleware/authMiddleware");
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const db = require("./config/db.auth");// Add these near the top of your server.js, after your middleware declarations
+const db = require("./config/db.auth");
 const authRoutes = require('./routes/auth');
 const patientRoutes = require('./routes/patients');
 const doctorRoutes = require('./routes/doctors');
@@ -13,54 +13,49 @@ const timingsRoutes = require('./routes/timings');
 
 const app = express();
 
-// CORS configuration - allow both localhost (dev) and production frontend
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://smart-care-ashy.vercel.app",
-  process.env.FRONTEND_URL, // Your production frontend URL
-].filter(Boolean); // Remove undefined values
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // In development, allow all origins
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
     
-    // In production, check allowed origins
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      // Log the origin for debugging
-      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
+
+app.use((req, res, next) => {
+  if (!res.get('Content-Type')) {
+    res.set('Content-Type', 'application/json; charset=utf-8');
+  }
+  next();
+});
+
 app.use('/api/auth', authRoutes);
-// Mount patient and doctor routers
-app.use('/patients', patientRoutes);        // CRUD: /patients
-app.use('/api/patient', patientRoutes);     // profile: /api/patient/profile
-app.use('/doctors', doctorRoutes);          // CRUD: /doctors
-app.use('/api/doctor', doctorRoutes);       // profile: /api/doctor/profile
-app.use('/api/timings', timingsRoutes);     // timings endpoints
+app.use('/patients', patientRoutes);
+app.use('/api/patient', patientRoutes);
+app.use('/doctors', doctorRoutes);
+app.use('/api/doctor', doctorRoutes);
+app.use('/api/timings', timingsRoutes);
 
-
-
-
-
-
-// routes moved to routes/patients.js
-
-// routes moved to routes/doctors.js
-
-// Protect deleting appointments - Only Admin can access
 app.delete("/appointments/:id", verifyToken, authorizeRoles("Admin"), (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM appointments WHERE appointment_id = ?", [id], (err, result) => {
@@ -69,88 +64,171 @@ app.delete("/appointments/:id", verifyToken, authorizeRoles("Admin"), (req, res)
   });
 });
 
-// API Routes
+app.delete("/appointments/:id/cancel", verifyToken, authorizeRoles("Admin", "Patient"), (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.userId;
+  const userRole = (req.user?.role || '').toLowerCase();
+
+  if (userRole === 'admin') {
+    db.query("DELETE FROM appointments WHERE appointment_id = ?", [id], (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!result || result.affectedRows === 0) return res.status(404).json({ error: "Appointment not found." });
+      return res.json({ message: "Appointment cancelled successfully!" });
+    });
+    return;
+  }
+
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const patientSql = "SELECT patient_id FROM patients WHERE user_id = ? LIMIT 1";
+  db.query(patientSql, [userId], (pErr, pRows) => {
+    if (pErr) return res.status(500).json({ error: pErr.message });
+    if (!pRows || pRows.length === 0) return res.status(404).json({ error: "Patient not found." });
+
+    const patientId = pRows[0].patient_id;
+    const checkSql = "SELECT appointment_id FROM appointments WHERE appointment_id = ? AND patient_id = ? LIMIT 1";
+    db.query(checkSql, [id, patientId], (cErr, cRows) => {
+      if (cErr) return res.status(500).json({ error: cErr.message });
+      if (!cRows || cRows.length === 0) {
+        return res.status(403).json({ error: "Access Denied. Appointment does not belong to this patient." });
+      }
+
+      db.query("DELETE FROM appointments WHERE appointment_id = ?", [id], (dErr, result) => {
+        if (dErr) return res.status(500).json({ error: dErr.message });
+        if (!result || result.affectedRows === 0) return res.status(404).json({ error: "Appointment not found." });
+        return res.json({ message: "Appointment cancelled successfully!" });
+      });
+    });
+  });
+});
+
 app.get("/", (req, res) => {
   res.json({ message: "SmartHealthcare API is running!" });
 });
-/*
-// User Signup Route
-app.post("/signup", (req, res) => {
-  const { name, email, password } = req.body;
 
-  // Basic validation
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
+app.get("/appointments/by-user/:userId", (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: "userId is required" });
 
-  const sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
-  db.query(sql, [name, email, password], (err, result) => {
-    if (err) {
-      console.error("Signup error:", err.message);
-      
-      // ✅ Friendly error message for duplicate email
-      if (err.code === "ER_DUP_ENTRY") {
-        return res.status(409).json({ error: "Email already registered." });
+  const findPatientSql = "SELECT patient_id FROM patients WHERE user_id = ? LIMIT 1";
+  db.query(findPatientSql, [userId], (findErr, rows) => {
+    if (findErr) return res.status(500).json({ error: findErr.message });
+    if (!rows || rows.length === 0) return res.json([]);
+
+    const patientId = rows[0].patient_id;
+    const apptSql = `
+      SELECT 
+        a.appointment_id,
+        a.patient_id,
+        a.doctor_id,
+        a.appointment_date,
+        a.status,
+        a.appointment_type,
+        a.notes,
+        u.full_name AS doctor_name,
+        d.department AS doctor_department
+      FROM appointments a
+      LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
+      LEFT JOIN users u ON d.user_id = u.user_id
+      WHERE a.patient_id = ?
+      ORDER BY a.appointment_date ASC
+    `;
+    db.query(apptSql, [patientId], (apptErr, results) => {
+      if (apptErr) return res.status(500).json({ error: apptErr.message });
+      res.json(results || []);
+    });
+  });
+});
+
+app.get("/appointments/by-doctor/:doctorId", verifyToken, authorizeRoles("Doctor", "Admin"), (req, res) => {
+  const { doctorId } = req.params;
+  if (!doctorId) return res.status(400).json({ error: "doctorId is required" });
+
+  const userRole = (req.user?.role || '').toLowerCase();
+  const userId = req.user?.userId;
+  if (userRole === 'doctor') {
+    const checkSql = "SELECT doctor_id FROM doctors WHERE doctor_id = ? AND user_id = ? LIMIT 1";
+    db.query(checkSql, [doctorId, userId], (checkErr, rows) => {
+      if (checkErr) return res.status(500).json({ error: checkErr.message });
+      if (!rows || rows.length === 0) {
+        return res.status(403).json({ error: "Access Denied. You do not have permission." });
       }
-
-      return res.status(500).json({ error: "Signup failed. Please try again." });
-    }
-
-    res.status(201).json({ message: "Signup successful", user_id: result.insertId });
-  });
-});
-
-// User Login Route
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-
-  // Basic validation
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+      const sql = `
+        SELECT 
+          a.appointment_id,
+          a.patient_id,
+          a.doctor_id,
+          a.appointment_date,
+          a.status,
+          a.appointment_type,
+          a.notes,
+          u.full_name AS patient_name,
+          p.date_of_birth AS patient_date_of_birth,
+          p.gender AS patient_gender
+        FROM appointments a
+        LEFT JOIN patients p ON a.patient_id = p.patient_id
+        LEFT JOIN users u ON p.user_id = u.user_id
+        WHERE a.doctor_id = ?
+        ORDER BY a.appointment_date ASC
+      `;
+      db.query(sql, [doctorId], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results || []);
+      });
+    });
+    return;
   }
 
-  const sql = "SELECT * FROM users WHERE email = ? AND password = ?";
-  db.query(sql, [email, password], (err, results) => {
-    if (err) {
-      console.error("Login error:", err.message);
-      return res.status(500).json({ error: "Login failed. Please try again." });
-    }
-
-    if (results.length === 0) {
-      return res.status(401).json({ error: "Invalid email or password" });
-    }
-
-    // ✅ Successful login
-    res.status(200).json({ message: "Login successful", user: results[0] });
-  });
-});
-
-
-*/
-// patients and doctors GET moved to routers
-
-// Fetch all appointments
-app.get("/appointments", (req, res) => {
-  db.query("SELECT * FROM appointments", (err, results) => {
+  const sql = `
+    SELECT 
+      a.appointment_id,
+      a.patient_id,
+      a.doctor_id,
+      a.appointment_date,
+      a.status,
+      a.appointment_type,
+      a.notes,
+      u.full_name AS patient_name,
+      p.date_of_birth AS patient_date_of_birth,
+      p.gender AS patient_gender
+    FROM appointments a
+    LEFT JOIN patients p ON a.patient_id = p.patient_id
+    LEFT JOIN users u ON p.user_id = u.user_id
+    WHERE a.doctor_id = ?
+    ORDER BY a.appointment_date ASC
+  `;
+  db.query(sql, [doctorId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    res.json(results || []);
   });
 });
 
-// Fetch all medical records
+app.get("/appointments/by-doctor/:doctorId/slots", verifyToken, authorizeRoles("Patient", "Doctor", "Admin"), (req, res) => {
+  const { doctorId } = req.params;
+  if (!doctorId) return res.status(400).json({ error: "doctorId is required" });
+
+  const sql = `
+    SELECT appointment_id, doctor_id, appointment_date, status
+    FROM appointments
+    WHERE doctor_id = ?
+    ORDER BY appointment_date ASC
+  `;
+  db.query(sql, [doctorId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results || []);
+  });
+});
+
 app.get("/medical-records", (req, res) => {
   db.query("SELECT * FROM medical_records", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
-// creation moved to routers
 
-// Add a new appointment
 app.post("/appointments", (req, res) => {
   const { patient_id, user_id, doctor_id, appointment_date, status, appointment_type, notes } = req.body;
 
-  // Ensure columns exist (MySQL 8+ supports IF NOT EXISTS)
   const alterSql = `
     ALTER TABLE appointments
       ADD COLUMN IF NOT EXISTS appointment_type ENUM('Consultation','Follow-up','New Patient') NULL,
@@ -159,7 +237,6 @@ app.post("/appointments", (req, res) => {
 
   db.query(alterSql, (alterErr) => {
     if (alterErr && alterErr.code !== 'ER_PARSE_ERROR') {
-      // Some MySQL variants may not support IF NOT EXISTS in ALTER; ignore parse error
       console.warn('ALTER TABLE appointments warning:', alterErr.message);
     }
 
@@ -193,7 +270,6 @@ app.post("/appointments", (req, res) => {
   });
 });
 
-// Add a new medical record
 app.post("/medical-records", (req, res) => {
   const { patient_id, doctor_id, diagnosis, prescription } = req.body;
   const sql = "INSERT INTO medical_records (patient_id, doctor_id, diagnosis, prescription) VALUES (?, ?, ?, ?)";
@@ -202,14 +278,10 @@ app.post("/medical-records", (req, res) => {
     res.json({ message: "Medical record added successfully!", record_id: result.insertId });
   });
 });
-// Update Entries (PUT)
-// updates moved to routers
 
-// ✅ Simplified PUT: only updates status
 app.put("/appointments/:id", (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-
 
   if (!status) {
     return res.status(400).json({ error: "Status is required" });
@@ -218,11 +290,11 @@ app.put("/appointments/:id", (req, res) => {
   const sql = `UPDATE appointments SET status = ? WHERE appointment_id = ?`;
   db.query(sql, [status, id], (err, result) => {
     if (err) {
-      console.error("❌ SQL Error:", err.message); // 👈 very helpful
+      console.error("SQL Error:", err.message);
       return res.status(500).json({ error: "Failed to update appointment" });
     }
 
-    res.json({ message: "✅ Appointment status updated successfully!" });
+    res.json({ message: "Appointment status updated successfully!" });
   });
 });
 
@@ -237,17 +309,6 @@ app.put("/medical-records/:id", (req, res) => {
   });
 });
 
-// Delete Entries (DELETE)
-// deletes moved to routers
-
-app.delete("/appointments/:id", (req, res) => {
-  const { id } = req.params;
-  db.query("DELETE FROM appointments WHERE appointment_id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: "Appointment deleted successfully!" });
-  });
-});
-
 app.delete("/medical-records/:id", (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM medical_records WHERE record_id = ?", [id], (err, result) => {
@@ -256,18 +317,9 @@ app.delete("/medical-records/:id", (req, res) => {
   });
 });
 
-// Note: Patient profile route is handled by patientRoutes at /api/patient/profile
+const JWT_SECRET = process.env.JWT_SECRET || 'our_secret_key';
 
-
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-// Start Server
-// Elastic Beanstalk sets PORT environment variable
 const PORT = process.env.PORT || 7070;
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || 'localhost';
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+app.listen(PORT, HOST, () => {});

@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import PatientNavbar from '@/components/PatientNavbar';
+import PatientSidebar from '@/components/PatientSidebar';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { formatDateUTC } from '@/lib/format';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 interface Appointment {
   doctor: {
@@ -32,11 +34,8 @@ interface AppointmentRow {
   appointment_date: string;
   status: string;
   notes: string | null;
-}
-
-interface PatientRow {
-  patient_id: number;
-  user_id: number;
+  doctor_name?: string | null;
+  doctor_department?: string | null;
 }
 
 interface Doctor {
@@ -49,9 +48,11 @@ interface Doctor {
   experience?: number | null;
   hospital_affiliation?: string | null;
   mobile?: string;
+  phone_number?: string;
 }
 
 export default function PatientDashboard() {
+  const { isOpen } = useSidebar();
   const [name, setName] = useState<string | null>(null);
   const [totalDoctors, setTotalDoctors] = useState<number>(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -81,43 +82,30 @@ export default function PatientDashboard() {
         }
 
         // Fetch total doctors count
-        const doctorsRes = await fetch(`${API_URL}/doctors`);
+        const doctorsRes = await apiFetch('/doctors');
         if (doctorsRes.ok) {
           const doctors = (await doctorsRes.json()) as Doctor[];
           setTotalDoctors(Array.isArray(doctors) ? doctors.length : 0);
         }
 
-        // Get patient_id for this user
-        const patientsRes = await fetch(`${API_URL}/patients`);
-        if (!patientsRes.ok) {
-          setLoading(false);
-          return;
-        }
-        const patients = (await patientsRes.json()) as PatientRow[];
-        const patient = Array.isArray(patients) ? patients.find((p: PatientRow) => p.user_id === userId) : null;
-        if (!patient?.patient_id) {
-          setLoading(false);
-          return;
-        }
-
-        // Fetch all appointments for this patient
-        const apptsRes = await fetch(`${API_URL}/appointments`);
+        // Fetch appointments for this user (includes doctor name/department)
+        const apptsRes = await apiFetch(`/appointments/by-user/${userId}`);
         if (!apptsRes.ok) {
           setLoading(false);
           return;
         }
         const appts = (await apptsRes.json()) as AppointmentRow[];
-        const myAppointments = (Array.isArray(appts) ? appts : []).filter(
-          (a: AppointmentRow) => a.patient_id === patient.patient_id
-        );
 
         // Fetch doctors for appointment details
-        const docsRes = await fetch(`${API_URL}/doctors`);
+        const docsRes = await apiFetch('/doctors');
         const docs = (docsRes.ok ? (await docsRes.json()) : []) as Doctor[];
 
         // Transform appointments to dashboard format
-        const transformedAppts: Appointment[] = myAppointments.map((a: AppointmentRow) => {
+        const transformedAppts: Appointment[] = (Array.isArray(appts) ? appts : []).map((a: AppointmentRow) => {
           const doctor = Array.isArray(docs) ? docs.find((d: Doctor) => d.doctor_id === a.doctor_id) : null;
+          const doctorName = a.doctor_name || doctor?.full_name || doctor?.name || 'Unknown Doctor';
+          const doctorDepartment = a.doctor_department || doctor?.department || doctor?.specialization || 'General';
+          const doctorMobile = doctor?.mobile || doctor?.phone_number;
           const dt = new Date(a.appointment_date);
           const apptDate = dt.toISOString().slice(0, 10);
           
@@ -133,21 +121,21 @@ export default function PatientDashboard() {
           return {
             doctor: {
               doctor_id: doctor?.doctor_id,
-              name: doctor?.full_name || doctor?.name || 'Unknown Doctor',
-              specialty: doctor?.department || doctor?.specialization || 'General',
+              name: doctorName,
+              specialty: doctorDepartment,
               image: '/doctor-thumb-01.jpg',
               title: doctor?.title,
-              department: doctor?.department || doctor?.specialization,
+              department: doctorDepartment,
               experience: doctor?.experience,
               hospital_affiliation: doctor?.hospital_affiliation,
-              mobile: doctor?.mobile
+              mobile: doctorMobile
             },
             apptDate,
             apptTime,
             bookingDate: apptDate,
             amount: '$0',
             followUp: '',
-            status: a.status === 'Scheduled' ? 'Confirm' : a.status === 'Canceled' ? 'Cancelled' : 'Pending'
+            status: a.status === 'confirmed' ? 'Confirm' : a.status === 'cancelled' ? 'Cancelled' : a.status === 'completed' ? 'Completed' : 'Pending'
           };
         });
 
@@ -191,9 +179,11 @@ export default function PatientDashboard() {
   const confirmedCount = appointments.filter(a => a.status.toLowerCase() === 'confirm').length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <PatientNavbar />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex flex-1">
+        <PatientSidebar />
+        <div className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-16'} p-8`}>
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -213,7 +203,11 @@ export default function PatientDashboard() {
                 <p className="text-sm text-gray-600">Upcoming</p>
                 <h2 className="text-3xl font-bold text-gray-900 mt-1">{loading ? '...' : totalUpcoming}</h2>
               </div>
-              <div className="text-3xl">📅</div>
+              <div className="text-blue-500">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow p-6 border-t-4 border-green-500">
@@ -222,7 +216,11 @@ export default function PatientDashboard() {
                 <p className="text-sm text-gray-600">Confirmed</p>
                 <h2 className="text-3xl font-bold text-gray-900 mt-1">{loading ? '...' : confirmedCount}</h2>
               </div>
-              <div className="text-3xl">✅</div>
+              <div className="text-green-500">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow p-6 border-t-4 border-yellow-500">
@@ -231,7 +229,11 @@ export default function PatientDashboard() {
                 <p className="text-sm text-gray-600">Pending</p>
                 <h2 className="text-3xl font-bold text-gray-900 mt-1">{loading ? '...' : pendingCount}</h2>
               </div>
-              <div className="text-3xl">⏳</div>
+              <div className="text-yellow-500">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                </svg>
+              </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow p-6 border-t-4 border-indigo-500">
@@ -240,7 +242,11 @@ export default function PatientDashboard() {
                 <p className="text-sm text-gray-600">Providers</p>
                 <h2 className="text-3xl font-bold text-gray-900 mt-1">{loading ? '...' : totalDoctors}</h2>
               </div>
-              <div className="text-3xl">👩‍⚕️</div>
+              <div className="text-indigo-500">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-4-4h-3m-6 6H4v-2a4 4 0 014-4h3m2-4a4 4 0 11-8 0 4 4 0 018 0zm8 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -309,33 +315,40 @@ export default function PatientDashboard() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-4">
               <a href="/patient/booking" className="p-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-center">
-                <div className="text-2xl mb-2">🗓️</div>
+                <div className="text-blue-500 mb-2 flex justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
                 <div className="text-sm font-medium text-gray-700">Book Appointment</div>
               </a>
               <a href="/patient/medical-records" className="p-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-center">
-                <div className="text-2xl mb-2">📁</div>
+                <div className="text-indigo-500 mb-2 flex justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                  </svg>
+                </div>
                 <div className="text-sm font-medium text-gray-700">Medical Records</div>
               </a>
               <a href="/patient/prescriptions" className="p-4 rounded-xl bg-green-50 hover:bg-green-100 text-center">
-                <div className="text-2xl mb-2">💊</div>
+                <div className="text-green-500 mb-2 flex justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V5a4 4 0 118 0v2m-8 4h8m-8 4h8m-9 4h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
                 <div className="text-sm font-medium text-gray-700">Prescriptions</div>
               </a>
               <a href="/patient/checkout" className="p-4 rounded-xl bg-yellow-50 hover:bg-yellow-100 text-center">
-                <div className="text-2xl mb-2">💳</div>
+                <div className="text-yellow-500 mb-2 flex justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 8a2 2 0 012-2h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8zm0 2h20" />
+                  </svg>
+                </div>
                 <div className="text-sm font-medium text-gray-700">Payments</div>
               </a>
             </div>
           </div>
         </div>
-
-        {/* Recent Activity */}
-        <div className="mt-6 bg-white rounded-2xl shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
-          <ul className="space-y-3 text-sm">
-            <li className="flex items-start gap-3"><span>✅</span> Appointment with Dr. Ruby Perrin confirmed.</li>
-            <li className="flex items-start gap-3"><span>📄</span> New lab results uploaded to Medical Records.</li>
-            <li className="flex items-start gap-3"><span>💳</span> Payment of $160 received for consultation.</li>
-          </ul>
         </div>
       </div>
 

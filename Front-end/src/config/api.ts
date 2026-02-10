@@ -1,12 +1,7 @@
 const getApiUrl = () => {
-  // If explicitly set via environment variable, use it
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  
-  // Default: Local development server
-  // For production, set NEXT_PUBLIC_API_URL environment variable to AWS endpoint
-  // Example: NEXT_PUBLIC_API_URL=http://smartcare-env.eba-vpus5s3b.us-east-2.elasticbeanstalk.com
   return 'http://localhost:7070';
 };
 

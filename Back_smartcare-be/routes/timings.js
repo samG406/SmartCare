@@ -1,4 +1,3 @@
-// routes/timings.js
 const express = require("express");
 const router = express.Router();
 const { getTimingsForDoctor, saveTimings } = require("../controllers/timingsController");

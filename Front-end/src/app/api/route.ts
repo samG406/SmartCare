@@ -1,7 +1,7 @@
 // Proxy API route to avoid mixed content issues (HTTPS frontend -> HTTP backend)
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://smartcare-env.eba-vpus5s3b.us-east-2.elasticbeanstalk.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7070';
 
 export async function POST(request: NextRequest) {
   return handleProxyRequest(request, 'POST');

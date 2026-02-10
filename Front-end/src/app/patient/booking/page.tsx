@@ -1,91 +1,83 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import PatientNavbar from '@/components/PatientNavbar';
+import PatientSidebar from '@/components/PatientSidebar';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { apiFetch } from '@/config/api';
-
-interface Doctor {
-  doctor_id: number;
-  user_id: number;
-  title: string;
-  department: string;
-  experience: number | null;
-  mobile: string;
-  hospital_affiliation: string | null;
-  full_name?: string;
-}
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
+import {
+  setSelectedDoctor,
+  setSelectedDate,
+  setSelectedTime,
+  setAppointmentType,
+  setNotes,
+  setDoctors,
+  setSchedule,
+  setScheduleLoading,
+  setCurrentStep,
+  resetBooking,
+  setBookedSlots,
+} from '@/lib/slices/bookingSlice';
 
 interface TimeSlot {
   start: string;
   end: string;
 }
 
-interface ScheduleData {
-  [weekday: string]: TimeSlot[];
-}
 
-type PatientRow = { patient_id: number; user_id: number };
 type AppointmentRow = {
   appointment_id: number;
   patient_id: number;
   doctor_id: number;
-  appointment_date: string; // ISO or 'YYYY-MM-DD HH:mm:ss'
+  appointment_date: string;
   status: string;
   notes: string | null;
+  doctor_name?: string | null;
+  doctor_department?: string | null;
 };
 
 export default function BookingPage() {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
-  const [schedule, setSchedule] = useState<ScheduleData>({});
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [appointmentType, setAppointmentType] = useState<string>('Consultation');
-  const [notes, setNotes] = useState<string>('');
-  const [scheduleLoading, setScheduleLoading] = useState(false);
-  const [booking, setBooking] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [lastBooking, setLastBooking] = useState<{
-    appointment_id?: number;
-    doctor?: Doctor | null;
-    date?: string;
-    time?: string;
-    status?: string;
-    notes?: string | null;
-  }>({});
-  type BookingSummary = {
-    appointment_id: number;
-    doctor: Doctor | null;
-    date: string;
-    time: string;
-    status: string;
-    notes: string | null;
-  };
-  const [dbSummary, setDbSummary] = useState<BookingSummary[] | null>(null);
-
-  // Fetch doctors on mount
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { isOpen } = useSidebar();
+  
+  const {
+    doctors,
+    selectedDoctor,
+    schedule,
+    selectedDate,
+    selectedTime,
+    appointmentType,
+    notes,
+    scheduleLoading,
+    currentStep,
+    bookedSlots,
+  } = useAppSelector((state) => state.booking);
+  
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
         const res = await apiFetch('/doctors');
         if (res.ok) {
           const data = await res.json();
-          setDoctors(data);
+          dispatch(setDoctors(data));
         }
       } catch (err) {
         console.error('Failed to fetch doctors:', err);
       }
     };
     fetchDoctors();
-  }, []);
+  }, [dispatch]);
 
-  // Fetch schedule when doctor is selected
   useEffect(() => {
     if (!selectedDoctor) {
-      setSchedule({});
+      dispatch(setSchedule({}));
       return;
     }
-    setScheduleLoading(true);
+    dispatch(setScheduleLoading(true));
     apiFetch(`/api/timings/${selectedDoctor}`)
       .then(async res => {
         const text = await res.text();
@@ -110,17 +102,85 @@ export default function BookingPage() {
         }
       })
       .then(data => {
-        setSchedule(data || {});
+        dispatch(setSchedule(data || {}));
       })
       .catch(err => {
         console.error('Failed to fetch schedule:', err);
-        setSchedule({});
+        dispatch(setSchedule({}));
       })
-      .finally(() => setScheduleLoading(false));
-  }, [selectedDoctor]);
+      .finally(() => dispatch(setScheduleLoading(false)));
+  }, [selectedDoctor, dispatch]);
 
-  // Get available time slots for selected date
-  const availableSlots = useMemo(() => {
+  useEffect(() => {
+    if (!selectedDoctor || !selectedDate) {
+      dispatch(setBookedSlots([]));
+      return;
+    }
+
+    const fetchBookedSlots = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          dispatch(setBookedSlots([]));
+          return;
+        }
+        const res = await apiFetch(`/appointments/by-doctor/${selectedDoctor}/slots`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const appointments = await res.json();
+          if (Array.isArray(appointments)) {
+            const dateStr = selectedDate;
+            const booked = appointments
+              .filter((apt: AppointmentRow) => {
+                if (apt.doctor_id !== selectedDoctor) return false;
+                if (apt.status?.toLowerCase() === 'cancelled') return false;
+                
+                const aptDate = new Date(apt.appointment_date);
+                const selectedDateObj = new Date(dateStr);
+                
+                return aptDate.toISOString().split('T')[0] === selectedDateObj.toISOString().split('T')[0];
+              })
+              .map((apt: AppointmentRow) => {
+                const aptDate = new Date(apt.appointment_date);
+                const hours = String(aptDate.getHours()).padStart(2, '0');
+                const minutes = String(aptDate.getMinutes()).padStart(2, '0');
+                return `${hours}:${minutes}`;
+              });
+            
+            dispatch(setBookedSlots(booked));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch booked slots:', err);
+        dispatch(setBookedSlots([]));
+      }
+    };
+
+    fetchBookedSlots();
+  }, [selectedDoctor, selectedDate, dispatch]);
+
+  useEffect(() => {
+    if (!selectedDoctor) return;
+
+    if (selectedDate && selectedTime) {
+      dispatch(setCurrentStep(3));
+    } else if (selectedDate || (Object.keys(schedule).length > 0 && !scheduleLoading)) {
+      dispatch(setCurrentStep(2));
+    } else if (Object.keys(schedule).length === 0 && !scheduleLoading && selectedDoctor) {
+      dispatch(setCurrentStep(1));
+    }
+  }, [selectedDoctor, selectedDate, selectedTime, schedule, scheduleLoading, dispatch]);
+
+  useEffect(() => {
+    if (selectedDoctor && Object.keys(schedule).length > 0 && currentStep === 1 && !scheduleLoading) {
+      dispatch(setCurrentStep(2));
+    }
+  }, [selectedDoctor, schedule, scheduleLoading, currentStep, dispatch]);
+
+  const allTimeSlots = useMemo(() => {
     if (!selectedDate) return [];
     const date = new Date(selectedDate);
     const weekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
@@ -133,16 +193,20 @@ export default function BookingPage() {
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
       
-      // Generate 30-minute slots
       for (let m = startMinutes; m < endMinutes; m += 30) {
         const h = Math.floor(m / 60);
         const min = m % 60;
-        slots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
+        const slotTime = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        slots.push(slotTime);
       }
     });
     
     return slots;
   }, [selectedDate, schedule]);
+
+  const availableSlots = useMemo(() => {
+    return allTimeSlots.filter(slot => !bookedSlots.includes(slot));
+  }, [allTimeSlots, bookedSlots]);
 
   const selectedDoctorData = doctors.find(d => d.doctor_id === selectedDoctor);
   const minDate = new Date().toISOString().split('T')[0];
@@ -151,289 +215,233 @@ export default function BookingPage() {
     e.preventDefault();
     if (!selectedDoctor || !selectedDate || !selectedTime) return;
     
-    setBooking(true);
-    try {
-      const userId = (() => {
-        try {
-          const u = localStorage.getItem('user');
-          return u ? JSON.parse(u).user_id : null;
-        } catch { return null; }
-      })();
-      
-      if (!userId) {
-        alert('Please log in to book an appointment');
-        return;
-      }
-
-      const res = await apiFetch('/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          doctor_id: selectedDoctor,
-          appointment_date: `${selectedDate} ${selectedTime}:00`,
-          status: 'Scheduled',
-          notes: notes || null
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        // capture and show a read-only summary
-        setLastBooking({
-          appointment_id: data?.appointment_id,
-          doctor: doctors.find(d => d.doctor_id === selectedDoctor) || null,
-          date: selectedDate,
-          time: selectedTime,
-          status: 'Scheduled',
-          notes: notes || null,
-        });
-        // refresh from DB as source of truth
-        await loadFromDb();
-        setShowForm(false);
-        // Reset form selections
-        setSelectedDoctor(null);
-        setSelectedDate('');
-        setSelectedTime('');
-        setNotes('');
-        setAppointmentType('Consultation');
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to book appointment');
-      }
-    } catch (err) {
-      console.error('Booking error:', err);
-      alert('Failed to book appointment');
-    } finally {
-      setBooking(false);
+    if (!selectedDoctor || !selectedDate || !selectedTime) {
+      alert('Please complete all required fields');
+      return;
     }
+
+    router.push('/patient/checkout');
   };
-
-  // Fetch all appointments for current user from DB
-  const loadFromDb = async () => {
-    try {
-      const u = localStorage.getItem('user');
-      const parsed = u ? JSON.parse(u) : null;
-      const userId = parsed?.user_id;
-      if (!userId) return;
-
-      // Get patient_id for this user
-      const pRes = await apiFetch('/patients');
-      if (!pRes.ok) return;
-      const patients = (await pRes.json()) as PatientRow[];
-      const patient = Array.isArray(patients) ? patients.find((p: PatientRow) => p.user_id === userId) : null;
-      if (!patient?.patient_id) return;
-
-      // Get all appointments for this patient
-      const aRes = await apiFetch('/appointments');
-      if (!aRes.ok) return;
-      const appts = (await aRes.json()) as AppointmentRow[];
-      const mine = (Array.isArray(appts) ? appts : []).filter((a: AppointmentRow) => a.patient_id === patient.patient_id);
-      if (mine.length === 0) { setDbSummary([]); return; }
-      mine.sort((a: AppointmentRow, b: AppointmentRow) => new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime());
-
-      // Fetch doctor for display
-      const dRes = await apiFetch('/doctors');
-      const docs = (dRes.ok ? (await dRes.json()) : []) as Doctor[];
-      const list: BookingSummary[] = mine.map((a: AppointmentRow) => {
-        const d = Array.isArray(docs) ? docs.find((doc: Doctor) => doc.doctor_id === a.doctor_id) : null;
-        const dt = new Date(a.appointment_date);
-        
-        // Format time in 12-hour format
-        let hours = dt.getHours();
-        const minutes = dt.getMinutes();
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; // 0 should be 12
-        const minutesStr = minutes < 10 ? `0${minutes}` : minutes;
-        const timeStr = `${hours}:${minutesStr} ${ampm}`;
-        
-        return {
-          appointment_id: a.appointment_id,
-          doctor: d || null,
-          date: dt.toISOString().slice(0,10),
-          time: timeStr,
-          status: a.status,
-          notes: a.notes || null,
-        };
-      });
-      setDbSummary(list);
-    } catch {}
-  };
-
-  useEffect(() => {
-    if (!showForm) {
-      loadFromDb();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showForm]);
-
-  // Load existing appointments on initial mount as well
-  useEffect(() => {
-    loadFromDb();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <PatientNavbar />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex items-center justify-between">
+      <div className="flex flex-1">
+        <PatientSidebar />
+        <div className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-16'} p-8`}>
+          <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Appointments</h1>
-            <p className="text-gray-600">Select a doctor and choose your preferred date and time</p>
+            <h1 className="text-4xl font-bold text-slate-800 mb-2">Book Appointment</h1>
+            <p className="text-slate-600">Select a doctor and choose your preferred date and time</p>
           </div>
-          {((dbSummary && dbSummary.length > 0) || lastBooking?.doctor) && !showForm && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(true);
-                setLastBooking({});
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+          <div className="flex items-center gap-3">
+            <Link
+              href="/patient/appointments"
+              className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium shadow-sm flex items-center gap-2"
             >
-              + New Appointment
-            </button>
-          )}
-        </div>
-
-        {/* Read-only last booking summary */}
-        {!showForm && (
-          <div className="bg-white rounded-2xl shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Appointments</h2>
-            {((dbSummary && dbSummary.length > 0) || lastBooking?.doctor) ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {(dbSummary && dbSummary.length > 0 ? dbSummary : [
-                      {
-                        appointment_id: lastBooking.appointment_id!,
-                        doctor: lastBooking.doctor!,
-                        date: lastBooking.date!,
-                        time: lastBooking.time!,
-                        status: lastBooking.status!,
-                        notes: lastBooking.notes || null,
-                      }
-                    ]).map((row) => (
-                      <tr key={row.appointment_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-gray-900">{row.appointment_id}</td>
-                        <td className="px-6 py-4 text-gray-900">
-                          {row.doctor ? (
-                            <div>
-                              <div className="font-semibold">{row.doctor.full_name || 'Unknown Doctor'}</div>
-                              <div className="text-sm text-gray-600">{row.doctor.title} - {row.doctor.department}</div>
-                            </div>
-                          ) : '-'}
-                        </td>
-                        <td className="px-6 py-4 text-gray-700">{row.date}</td>
-                        <td className="px-6 py-4 text-gray-700">{row.time}</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-sm">{row.status}</span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-700">{row.notes || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="py-12 text-center">
-                <div className="text-6xl mb-4">📅</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No appointments</h3>
-                <p className="text-gray-600 mb-6">Schedule your appointment.</p>
-                <button
-                  onClick={() => {
-                    setShowForm(true);
-                    setLastBooking({});
-                  }}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Book Appointment
-                </button>
-              </div>
-            )}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              View Appointments
+            </Link>
           </div>
-        )}
-
-        {showForm && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Step 1: Doctor Selection */}
-          <div className="bg-white rounded-2xl shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 1: Select Doctor</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Choose a Doctor</label>
-              <select
-                value={selectedDoctor || ''}
-                onChange={(e) => setSelectedDoctor(Number(e.target.value) || null)}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none"
-                required
-              >
-                <option value="">-- Select Doctor --</option>
-                {doctors.map((doc) => (
-                  <option key={doc.doctor_id} value={doc.doctor_id}>
-                    {doc.full_name || 'Unknown Doctor'} - {doc.title} - {doc.department}
-                    {doc.experience && ` (${doc.experience} years)`}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedDoctorData && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                    {selectedDoctorData.full_name 
-                      ? selectedDoctorData.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                      : selectedDoctorData.title.split(' ')[0].slice(0,2)}
+        </div>
+        <div className="flex gap-0">
+          <div className="w-full md:w-80 lg:w-96 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 shrink-0">
+            <div className="p-6 md:p-8 flex flex-col justify-between h-full min-h-[500px] md:min-h-0">
+              <div>
+                <div className="space-y-0">
+                  <div className={`flex items-center gap-3 ${selectedDoctor ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedDoctor ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      1
+                    </div>
+                    <span className={`text-sm font-medium ${selectedDoctor ? 'text-slate-900' : 'text-slate-400'}`}>
+                      Specialist
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">
-                      {selectedDoctorData.full_name || 'Unknown Doctor'}
-                    </h3>
-                    <p className="text-sm text-gray-700 font-medium">{selectedDoctorData.title} - {selectedDoctorData.department}</p>
-                    {selectedDoctorData.experience && (
-                      <p className="text-sm text-gray-600 mt-1">{selectedDoctorData.experience} years of experience</p>
-                    )}
-                    {selectedDoctorData.hospital_affiliation && (
-                      <p className="text-sm text-gray-600 mt-1">{selectedDoctorData.hospital_affiliation}</p>
-                    )}
+                  <div className="w-px h-4 bg-slate-200 ml-3"></div>
+                  <div className={`flex items-center gap-3 ${selectedDate && selectedTime ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedDate && selectedTime ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      2
+                    </div>
+                    <span className={`text-sm font-medium ${selectedDate && selectedTime ? 'text-slate-900' : 'text-slate-400'}`}>
+                      Date & Time
+                    </span>
+                  </div>
+                  <div className="w-px h-4 bg-slate-200 ml-3"></div>
+                  <div className={`flex items-center gap-3 ${selectedDoctor && selectedDate && selectedTime ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedDoctor && selectedDate && selectedTime ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      3
+                    </div>
+                    <span className={`text-sm font-medium ${selectedDoctor && selectedDate && selectedTime ? 'text-slate-900' : 'text-slate-400'}`}>
+                      Details
+                    </span>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {selectedDoctor && scheduleLoading && (
-              <div className="mt-4 text-sm text-gray-500">Loading schedule...</div>
-            )}
+                <div className="mt-8">
+                  {selectedDoctorData ? (
+                    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center text-sm font-bold">
+                          {selectedDoctorData.full_name 
+                            ? selectedDoctorData.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                            : selectedDoctorData.title.split(' ')[0].slice(0,2)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900 leading-tight">
+                            {selectedDoctorData.full_name || 'Unknown Doctor'}
+                          </div>
+                          <div className="text-xs text-slate-500">{selectedDoctorData.department}</div>
+                        </div>
+                      </div>
+                      
+                      {selectedDate && selectedTime && (
+                        <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                          <div className="flex items-center gap-2 text-xs text-slate-600">
+                            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>{new Date(selectedDate).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-600">
+                            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{selectedTime}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 border-dashed text-center">
+                      <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-2 text-slate-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <p className="text-xs text-slate-400">Select a doctor to begin</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
           </div>
 
+          <div className="flex-1 bg-white">
+            <form onSubmit={handleSubmit}>
+              {currentStep === 1 && (
+                <div className="p-6 md:p-10">
+                  <h2 className="text-xl font-bold text-slate-900 mb-5">Select Specialist</h2>
+
+                  <div className="space-y-3">
+                    {doctors.map((doc) => {
+                      const isSelected = selectedDoctor === doc.doctor_id;
+                      const initials = doc.full_name
+                        ? doc.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                        : doc.title.split(' ')[0].slice(0,2);
+                      
+                      const avatarColors = [
+                        'bg-pink-100 text-pink-700',
+                        'bg-blue-100 text-blue-700',
+                        'bg-orange-100 text-orange-700',
+                        'bg-purple-100 text-purple-700',
+                        'bg-green-100 text-green-700',
+                        'bg-yellow-100 text-yellow-700'
+                      ];
+                      const colorIndex = doc.doctor_id % avatarColors.length;
+                      const avatarColor = avatarColors[colorIndex];
+                      
+                      return (
+                        <button
+                          key={doc.doctor_id}
+                          type="button"
+                          onClick={() => {
+                            dispatch(setSelectedDoctor(doc.doctor_id));
+                          }}
+                          className={`w-full text-left p-4 rounded-xl border-2 transition-all relative ${
+                            isSelected 
+                              ? 'border-teal-500 bg-white' 
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                        >
+                          {/* Selection indicator in top right */}
+                          <div className="absolute top-4 right-4">
+                            {isSelected ? (
+                              <div className="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white"></div>
+                            )}
+                          </div>
+
+                          <div className="flex items-start gap-4 pr-8">
+                            <div className={`w-12 h-12 ${avatarColor} rounded-lg flex items-center justify-center text-sm font-bold shrink-0`}>
+                              {initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-slate-900 text-base mb-0.5">
+                                {doc.full_name || 'Unknown Doctor'}
+                              </h3>
+                              <p className="text-sm text-teal-600 font-medium mb-2">{doc.department}</p>
+                              <div className="flex items-center gap-4 text-xs text-slate-500">
+                                {doc.experience && (
+                                  <div className="flex items-center gap-1.5">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span>{doc.experience} yrs</span>
+                                  </div>
+                                )}
+                                {doc.hospital_affiliation && (
+                                  <div className="flex items-center gap-1.5">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                    <span className="truncate">{doc.hospital_affiliation}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedDoctor && scheduleLoading && (
+                    <div className="mt-4 text-sm text-slate-500">Loading schedule...</div>
+                  )}
+                </div>
+              )}
+
           {/* Step 2: Date & Time Selection */}
-          {selectedDoctor && Object.keys(schedule).length > 0 && (
-            <div className="bg-white rounded-2xl shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 2: Select Date & Time</h2>
+          {currentStep === 2 && selectedDoctor && Object.keys(schedule).length > 0 && (
+            <div className="p-6 md:p-10">
+              <h2 className="text-xl font-bold text-slate-900 mb-5">Date & Time</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => {
-                      setSelectedDate(e.target.value);
-                      setSelectedTime('');
+                      dispatch(setSelectedDate(e.target.value));
+                      dispatch(setSelectedTime(''));
                     }}
                     min={minDate}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none bg-white text-slate-700 transition-all"
                     required
                   />
                   {selectedDate && availableSlots.length === 0 && (
@@ -442,32 +450,40 @@ export default function BookingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Time</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
                   {selectedDate ? (
-                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border-2 border-gray-200 rounded-xl">
-                      {availableSlots.length > 0 ? (
-                        availableSlots.map((slot) => (
-                          <button
-                            key={slot}
-                            type="button"
-                            onClick={() => setSelectedTime(slot)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              selectedTime === slot
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {slot}
-                          </button>
-                        ))
+                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border border-slate-300 rounded-lg bg-slate-50">
+                      {allTimeSlots.length > 0 ? (
+                        allTimeSlots.map((slot) => {
+                          const isBooked = bookedSlots.includes(slot);
+                          const isAvailable = !isBooked;
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={() => isAvailable && dispatch(setSelectedTime(slot))}
+                              disabled={isBooked}
+                              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                isBooked
+                                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed line-through opacity-60'
+                                  : selectedTime === slot
+                                  ? 'bg-slate-700 text-white'
+                                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                              }`}
+                              title={isBooked ? 'This time slot is already booked' : ''}
+                            >
+                              {slot}
+                            </button>
+                          );
+                        })
                       ) : (
-                        <div className="col-span-4 text-center text-gray-500 text-sm py-4">
+                        <div className="col-span-4 text-center text-slate-500 text-sm py-4">
                           No slots available
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-400">
+                    <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-400 bg-slate-50">
                       Select a date first
                     </div>
                   )}
@@ -477,17 +493,17 @@ export default function BookingPage() {
           )}
 
           {/* Step 3: Appointment Details */}
-          {selectedDoctor && selectedDate && selectedTime && (
-            <div className="bg-white rounded-2xl shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 3: Appointment Details</h2>
+          {currentStep === 3 && selectedDoctor && selectedDate && selectedTime && (
+            <div className="p-6 md:p-10">
+              <h2 className="text-xl font-bold text-slate-900 mb-5">Details</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Appointment Type</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Appointment Type</label>
                   <select
                     value={appointmentType}
-                    onChange={(e) => setAppointmentType(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none"
+                    onChange={(e) => dispatch(setAppointmentType(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none bg-white text-slate-700 transition-all"
                     required
                   >
                     <option value="Consultation">Consultation</option>
@@ -497,18 +513,18 @@ export default function BookingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Scheduled Time</label>
-                  <div className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-gray-700">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Scheduled Time</label>
+                  <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-slate-50 text-slate-700 font-medium">
                     {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, {selectedTime}
                   </div>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Notes (Optional)</label>
                   <textarea
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 h-24 focus:border-blue-500 focus:outline-none"
+                    onChange={(e) => dispatch(setNotes(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 h-24 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none bg-white text-slate-700 transition-all resize-none"
                     placeholder="Add any additional notes or concerns..."
                   />
                 </div>
@@ -516,35 +532,71 @@ export default function BookingPage() {
             </div>
           )}
 
-          {/* Submit Button */}
-          {selectedDoctor && selectedDate && selectedTime && (
-            <div className="flex justify-end gap-3">
+          {/* Navigation Buttons */}
+          {currentStep === 2 && (
+            <div className="px-6 md:px-10 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedDoctor(null);
-                  setSelectedDate('');
-                  setSelectedTime('');
-                  setNotes('');
-                  setAppointmentType('Consultation');
-                  setShowForm(false);
+                  dispatch(setSelectedDoctor(null));
+                  dispatch(setSchedule({}));
+                  dispatch(setBookedSlots([]));
+                  dispatch(setSelectedDate(''));
+                  dispatch(setSelectedTime(''));
+                  dispatch(setCurrentStep(1));
                 }}
-                className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-medium"
+                className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition-colors"
               >
-                Cancel
+                Back
               </button>
               <button
-                type="submit"
-                disabled={booking}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium"
+                type="button"
+                onClick={() => {
+                  if (selectedDate && selectedTime) {
+                    dispatch(setCurrentStep(3));
+                  }
+                }}
+                disabled={!selectedDate || !selectedTime}
+                className="px-6 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors shadow-sm"
               >
-                {booking ? 'Booking...' : 'Confirm Booking'}
+                Continue
               </button>
             </div>
           )}
-        </form>
-        )}
+
+          {currentStep === 3 && (
+            <div className="px-6 md:px-10 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => dispatch(setCurrentStep(2))}
+                className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition-colors"
+              >
+                Back
+              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch(resetBooking());
+                  }}
+                  className="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 font-medium text-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-black font-medium transition-colors shadow-sm"
+                >
+                  Confirm Booking
+                </button>
+              </div>
+            </div>
+          )}
+            </form>
+          </div>
+        </div>
+        </div>
       </div>
     </div>
   );
-}
+};

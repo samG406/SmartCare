@@ -77,12 +77,12 @@ router.post('/login', async (req, res) => {
     const userRole = (user.role || '').toLowerCase();
     if (userRole === "doctor") {
       // Convert callback-based query to promise
-      // Note: Using specialization and phone_number to match database schema
+      // Use SELECT * to tolerate schema differences (department vs specialization, mobile vs phone_number).
       let doctorRows = [];
       try {
         doctorRows = await new Promise((resolve, reject) => {
           db.query(
-            "SELECT doctor_id, specialization, phone_number, hospital_affiliation, experience FROM doctors WHERE user_id = ?",
+            "SELECT * FROM doctors WHERE user_id = ?",
             [user.user_id],
             (err, results) => {
               if (err) {
@@ -104,6 +104,8 @@ router.post('/login', async (req, res) => {
       }
       
       const doctor = doctorRows[0] || {};
+      const department = doctor.department || doctor.specialization || null;
+      const mobile = doctor.mobile || doctor.phone_number || null;
       return res.json({
         token,
         user: {
@@ -111,8 +113,10 @@ router.post('/login', async (req, res) => {
           email: user.email,
           role: user.role,
           doctor_id: doctor.doctor_id || null,
-          specialization: doctor.specialization || null,
-          phone_number: doctor.phone_number || null,
+          department,
+          specialization: doctor.specialization || department,
+          mobile,
+          phone_number: doctor.phone_number || mobile,
           hospital_affiliation: doctor.hospital_affiliation || null,
           experience: doctor.experience || null,
           full_name: user.full_name || user.name || ""
@@ -191,11 +195,10 @@ router.post('/signup', async (req, res) => {
         const userId = results.insertId;
 
         // If doctor, insert into Doctors table as well
-        // Map frontend fields to database columns: department -> specialization, mobile -> phone_number
+        // Use department/mobile to match schema in routes/doctors.js and README.
         const userRole = (role || '').toLowerCase();
         if (userRole === "doctor") {
-          // Use specialization and phone_number to match database schema
-          const doctorInsertQuery = 'INSERT INTO doctors (user_id, specialization, phone_number, experience, hospital_affiliation) VALUES (?, ?, ?, ?, ?)';
+          const doctorInsertQuery = 'INSERT INTO doctors (user_id, department, mobile, experience, hospital_affiliation) VALUES (?, ?, ?, ?, ?)';
           db.query(
             doctorInsertQuery,
             [userId, department || null, mobile || null, experience || null, hospital_affiliation || null],

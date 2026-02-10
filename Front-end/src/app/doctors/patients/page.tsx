@@ -3,15 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DoctorNavbar from '@/components/DoctorNavbar';
 import { formatDateUTC } from '@/lib/format';
-import { API_URL } from '@/config/api';
-
-interface PatientRow {
-  patient_id: number;
-  user_id: number;
-  date_of_birth?: string | null;
-  gender?: string | null;
-  full_name?: string;
-}
+import { apiFetch } from '@/config/api';
 
 interface AppointmentRow {
   appointment_id: number;
@@ -20,6 +12,9 @@ interface AppointmentRow {
   appointment_date: string;
   status: string;
   appointment_type: string | null;
+  patient_name?: string | null;
+  patient_date_of_birth?: string | null;
+  patient_gender?: string | null;
 }
 
 interface Patient {
@@ -59,28 +54,22 @@ export default function MyPatientsPage() {
       }
 
       try {
-        // Fetch all appointments for this doctor
-        const apptsRes = await fetch(`${API_URL}/appointments`);
+        // Fetch appointments for this doctor (includes patient info)
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        const apptsRes = await apiFetch(`/appointments/by-doctor/${doctorId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!apptsRes.ok) {
           setLoading(false);
           return;
         }
-        const allAppointments = (await apptsRes.json()) as AppointmentRow[];
-        const myAppointments = (Array.isArray(allAppointments) ? allAppointments : []).filter(
-          (a: AppointmentRow) => a.doctor_id === doctorId
-        );
-
-        // Get unique patient IDs
-        const uniquePatientIds = new Set(myAppointments.map(a => a.patient_id));
-
-        // Fetch all patients
-        const patientsRes = await fetch(`${API_URL}/patients`);
-        const allPatients = (patientsRes.ok ? (await patientsRes.json()) : []) as PatientRow[];
-
-        // Filter to only patients who have appointments with this doctor
-        const myPatientsList = Array.isArray(allPatients) 
-          ? allPatients.filter(p => uniquePatientIds.has(p.patient_id))
-          : [];
+        const myAppointments = (await apptsRes.json()) as AppointmentRow[];
 
         // Calculate age from date_of_birth
         const calculateAge = (dob: string | null | undefined): number => {
@@ -96,9 +85,20 @@ export default function MyPatientsPage() {
         };
 
         // Transform patients
-        const transformedPatients: Patient[] = myPatientsList.map((patient: PatientRow) => {
+        const patientMap = new Map<number, { name: string; gender: string; dob: string | null }>();
+        myAppointments.forEach((a) => {
+          if (!patientMap.has(a.patient_id)) {
+            patientMap.set(a.patient_id, {
+              name: a.patient_name || 'Unknown Patient',
+              gender: a.patient_gender || 'Not specified',
+              dob: a.patient_date_of_birth || null,
+            });
+          }
+        });
+
+        const transformedPatients: Patient[] = Array.from(patientMap.entries()).map(([patientId, info]) => {
           // Get appointments for this patient
-          const patientAppts = myAppointments.filter(a => a.patient_id === patient.patient_id);
+          const patientAppts = myAppointments.filter(a => a.patient_id === patientId);
           
           // Sort appointments by date
           const sortedAppts = [...patientAppts].sort((a, b) => 
@@ -142,13 +142,13 @@ export default function MyPatientsPage() {
             status = 'recovering';
           }
 
-          const age = calculateAge(patient.date_of_birth);
+          const age = calculateAge(info.dob);
 
           return {
-            id: `PT${String(patient.patient_id).padStart(3, '0')}`,
-            name: patient.full_name || 'Unknown Patient',
+            id: `PT${String(patientId).padStart(3, '0')}`,
+            name: info.name,
             age: age || 0,
-            gender: patient.gender || 'Not specified',
+            gender: info.gender,
             condition: condition || 'General',
             lastVisit: lastVisit || '',
             nextAppointment: nextAppointment || '',

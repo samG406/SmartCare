@@ -1,7 +1,6 @@
 const db = require('../config/db.auth');
 
 // GET /api/timings/:doctorId
-// Returns schedule timings grouped by weekday for a doctor
 exports.getTimingsForDoctor = (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -58,8 +57,6 @@ exports.getTimingsForDoctor = (req, res) => {
 };
 
 // POST /api/timings
-// Saves or updates schedule timings for a doctor
-// Body: { doctor_id, weekday, intervals: [{start, end}] }
 exports.saveTimings = (req, res) => {
   const { doctor_id, weekday, intervals } = req.body;
 

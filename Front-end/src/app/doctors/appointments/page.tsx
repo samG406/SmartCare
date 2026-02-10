@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DoctorNavbar from '@/components/DoctorNavbar';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 interface AppointmentRow {
   appointment_id: number;
@@ -12,12 +12,7 @@ interface AppointmentRow {
   status: string;
   appointment_type: string | null;
   notes: string | null;
-}
-
-interface PatientRow {
-  patient_id: number;
-  user_id: number;
-  full_name?: string;
+  patient_name?: string | null;
 }
 
 interface Appointment {
@@ -63,20 +58,22 @@ export default function AppointmentsPage() {
       }
 
       try {
-        // Fetch all appointments
-        const apptsRes = await fetch(`${API_URL}/appointments`);
+        // Fetch appointments for this doctor (includes patient info)
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        const apptsRes = await apiFetch(`/appointments/by-doctor/${doctorId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!apptsRes.ok) {
           setLoading(false);
           return;
         }
-        const allAppts = (await apptsRes.json()) as AppointmentRow[];
-        const myAppts = (Array.isArray(allAppts) ? allAppts : []).filter(
-          (a: AppointmentRow) => a.doctor_id === doctorId
-        );
-
-        // Fetch all patients
-        const patientsRes = await fetch(`${API_URL}/patients`);
-        const patients = (patientsRes.ok ? (await patientsRes.json()) : []) as PatientRow[];
+        const myAppts = (await apptsRes.json()) as AppointmentRow[];
 
         // Calculate stats
         setTotalCount(myAppts.length);
@@ -86,8 +83,7 @@ export default function AppointmentsPage() {
 
         // Transform appointments
         const transformedAppts: Appointment[] = myAppts.map((a: AppointmentRow) => {
-          const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === a.patient_id) : null;
-          const patientName = patient?.full_name || 'Unknown Patient';
+          const patientName = a.patient_name || 'Unknown Patient';
           const patientId = `PT${String(a.patient_id).padStart(3, '0')}`;
 
           const dt = new Date(a.appointment_date);
@@ -313,9 +309,14 @@ export default function AppointmentsPage() {
                               e.stopPropagation();
                               if (appointment.status !== 'completed') {
                                 try {
-                                  const res = await fetch(`${API_URL}/appointments/${appointment.id}`, {
+                                  const token = localStorage.getItem('token');
+                                  if (!token) return;
+                                  const res = await apiFetch(`/appointments/${appointment.id}`, {
                                     method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: { 
+                                      'Content-Type': 'application/json',
+                                      Authorization: `Bearer ${token}`,
+                                    },
                                     body: JSON.stringify({ status: 'Completed' })
                                   });
                                   if (res.ok) {
@@ -335,9 +336,14 @@ export default function AppointmentsPage() {
                               e.stopPropagation();
                               if (appointment.status !== 'cancelled') {
                                 try {
-                                  const res = await fetch(`${API_URL}/appointments/${appointment.id}`, {
+                                  const token = localStorage.getItem('token');
+                                  if (!token) return;
+                                  const res = await apiFetch(`/appointments/${appointment.id}`, {
                                     method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: { 
+                                      'Content-Type': 'application/json',
+                                      Authorization: `Bearer ${token}`,
+                                    },
                                     body: JSON.stringify({ status: 'Canceled' })
                                   });
                                   if (res.ok) {

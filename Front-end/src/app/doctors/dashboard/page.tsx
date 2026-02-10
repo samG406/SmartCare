@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DoctorNavbar from '@/components/DoctorNavbar';
-import { API_URL } from '@/config/api';
+import { apiFetch } from '@/config/api';
 
 interface StatCardProps {
   title: string;
@@ -80,13 +80,7 @@ interface AppointmentRow {
   status: string;
   appointment_type: string | null;
   notes: string | null;
-}
-
-interface PatientRow {
-  patient_id: number;
-  user_id: number;
-  full_name?: string;
-  name?: string;
+  patient_name?: string | null;
 }
 
 interface AppointmentData {
@@ -130,21 +124,23 @@ export default function DoctorDashboard() {
       }
 
       try {
-        // Fetch all appointments for this doctor
-        const apptsRes = await fetch(`${API_URL}/appointments`);
+        // Fetch appointments for this doctor (includes patient info)
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        const apptsRes = await apiFetch(`/appointments/by-doctor/${doctorId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!apptsRes.ok) {
           setLoading(false);
           return;
         }
-        const allAppointments = (await apptsRes.json()) as AppointmentRow[];
-        const myAppointments = (Array.isArray(allAppointments) ? allAppointments : []).filter(
-          (a: AppointmentRow) => a.doctor_id === doctorId
-        );
+        const myAppointments = (await apptsRes.json()) as AppointmentRow[];
         setAllMyAppointments(myAppointments);
-
-        // Fetch all patients (now includes full_name from Users table)
-        const patientsRes = await fetch(`${API_URL}/patients`);
-        const patients = (patientsRes.ok ? (await patientsRes.json()) : []) as PatientRow[];
 
         // Calculate total unique patients
         const uniquePatientIds = new Set(myAppointments.map(a => a.patient_id));
@@ -171,8 +167,7 @@ export default function DoctorDashboard() {
         const formattedTodayAppts: AppointmentData[] = todayAppts
           .slice(0, 3) // Show only first 3
           .map((a: AppointmentRow) => {
-            const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === a.patient_id) : null;
-            const patientName = patient?.full_name || 'Unknown Patient';
+            const patientName = a.patient_name || 'Unknown Patient';
             
             const dt = new Date(a.appointment_date);
             let hours = dt.getHours();
@@ -208,8 +203,7 @@ export default function DoctorDashboard() {
           if (recentPatientIds.has(appt.patient_id)) continue;
           if (recentPatientsList.length >= 3) break;
 
-          const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === appt.patient_id) : null;
-          const patientName = patient?.full_name || 'Unknown Patient';
+          const patientName = appt.patient_name || 'Unknown Patient';
           
           const apptDate = new Date(appt.appointment_date);
           const now = new Date();

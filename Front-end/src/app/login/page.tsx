@@ -41,6 +41,8 @@ export default function LoginPage() {
           role: string;
           full_name?: string;
           doctor_id?: number;
+          department?: string;
+          mobile?: string;
           specialization?: string;
           phone_number?: string;
           hospital_affiliation?: string;

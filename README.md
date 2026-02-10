@@ -129,7 +129,7 @@ Healthcare Researchers: Access anonymized patient data for research & AI-driven 
 ![Activity Diagram](./diagrams/activity_diagram.png)
 
 
-# 📌 SmartHealthcare Database Design
+#  SmartHealthcare Database Design
 
 ## 1 Entity-Relationship Diagram (ERD)
 The ERD below represents the database structure for the SmartHealthcare system.
@@ -240,7 +240,7 @@ The SmartHealthcare database consists of the following tables:
 
 ---
 
-##  3️ Sample SQL Queries
+##  3️  SQL Queries
 Below are some sample queries demonstrating key functionalities of the SmartHealthcare database.
 
 ###  → Retrieve all appointments for a specific patient

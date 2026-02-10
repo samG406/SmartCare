@@ -2,6 +2,8 @@
 
 import React from 'react';
 import PatientNavbar from '@/components/PatientNavbar';
+import PatientSidebar from '@/components/PatientSidebar';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { formatDateUTC } from '@/lib/format';
 
 const records = [
@@ -10,10 +12,13 @@ const records = [
 ];
 
 export default function MedicalRecordsPage() {
+  const { isOpen } = useSidebar();
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <PatientNavbar />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex flex-1">
+        <PatientSidebar />
+        <div className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-16'} p-8`}>
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Medical Records</h1>
 
         <div className="bg-white rounded-2xl shadow overflow-hidden">
@@ -39,6 +44,7 @@ export default function MedicalRecordsPage() {
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
     </div>
