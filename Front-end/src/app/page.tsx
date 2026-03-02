@@ -231,7 +231,7 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="mt-20 border-t border-stone-200/90 bg-gradient-to-b from-stone-50 via-white to-stone-50/80 text-stone-800">
+      <footer className="mt-20 border-t border-stone-200/90 bg-linear-to-b from-stone-50 via-white to-stone-50/80 text-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-16 pb-0">
           <div className="grid grid-cols-1 gap-12 sm:gap-14 md:grid-cols-12 md:gap-10 lg:gap-14">
             {/* Brand */}
