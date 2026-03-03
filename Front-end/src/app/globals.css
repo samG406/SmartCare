@@ -28,3 +28,34 @@ body {
 }
 
 /* Keep form fields readable on light backgrounds when OS prefers dark mode */
+input,
+select,
+textarea {
+  color: #171717;
+  background-color: #ffffff;
+}
+
+select option {
+  color: #171717;
+  background-color: #ffffff;
+}
+
+/* Features hub — floating satellites */
+.cn-sat {
+  animation: cn-float 6s ease-in-out infinite;
+}
+
+.cn-sat.records {
+  animation-delay: -2s;
+}
+
+.cn-sat.patients {
+  animation-delay: -4s;
+}
+
+@keyframes cn-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
