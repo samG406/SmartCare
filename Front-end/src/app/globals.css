@@ -59,3 +59,33 @@ select option {
     transform: translateY(0);
   }
   50% {
+    transform: translateY(-10px);
+  }
+}
+
+.conn-svg path {
+  stroke: var(--mint);
+  stroke-width: 1.5;
+  fill: none;
+  stroke-dasharray: 4 6;
+  opacity: 0.5;
+}
+
+.features-hub-conn path {
+  stroke: #28a745;
+  stroke-width: 1.5;
+  fill: none;
+  stroke-dasharray: 4 6;
+  opacity: 0.5;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
