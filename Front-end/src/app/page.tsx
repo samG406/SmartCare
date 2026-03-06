@@ -170,19 +170,32 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-10 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#f9f9f9' }}>
-        <div className="max-w-7xl mx-auto text-center">
+      <section className="pt-32 pb-10" style={{ backgroundColor: '#f9f9f9' }}>
+        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           {/* Hero Heading */}
           <div className="mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Search Doctor, Make an Appointment
+            <h1
+              className="mx-auto max-w-4xl text-balance text-4xl text-slate-900 sm:text-5xl md:text-[3.25rem] md:leading-tight"
+              style={{
+                fontFamily: 'var(--font-instrument-serif), "Cormorant Garamond", Georgia, serif',
+                fontWeight: 400,
+                letterSpacing: '0.03em',
+              }}
+            >
+              Healthcare that actually
+              <br />
+              <span style={{ color: '#28a745' }}>feels like care.</span>
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Discover the best doctors, clinic & hospital the city nearest to you.
+            <p
+              className="mx-auto mt-5 max-w-2xl text-pretty text-base text-slate-600 sm:text-lg"
+              style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
+            >
+              One calm platform for patients, doctors and clinics — booking, records and follow-ups in one place.
             </p>
           </div>
+        </div>
 
-          {/* Hero Image */}
+        {/* Hero Image */}
           <div className="mt-10 mb-16 w-full">
             <Image 
               src={homeimg} 
