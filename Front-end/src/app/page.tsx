@@ -22,6 +22,8 @@ interface Speciality {
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [pageReady, setPageReady] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => {
@@ -36,6 +38,51 @@ export default function HomePage() {
 
     return () => cancelAnimationFrame(frameId);
   }, []);
+
+  // Intro only on first visit while the page is still loading; skip if already rendered.
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => {
+      try {
+        if (sessionStorage.getItem('smartcare-home-reveal-seen') === '1') {
+          setPageReady(true);
+          return;
+        }
+
+        const nav = performance.getEntriesByType('navigation')[0] as
+          | PerformanceNavigationTiming
+          | undefined;
+        if (nav?.type === 'back_forward') {
+          sessionStorage.setItem('smartcare-home-reveal-seen', '1');
+          setPageReady(true);
+          return;
+        }
+
+        if (document.readyState === 'complete') {
+          sessionStorage.setItem('smartcare-home-reveal-seen', '1');
+          setPageReady(true);
+          return;
+        }
+
+        setShowIntro(true);
+      } catch {
+        setPageReady(true);
+      }
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  const handleIntroMidpoint = () => {
+    setPageReady(true);
+  };
+
+  const handleCircularRevealComplete = () => {
+    try {
+      sessionStorage.setItem('smartcare-home-reveal-seen', '1');
+    } catch {}
+    setPageReady(true);
+    setShowIntro(false);
+  };
 
   const handleLogout = () => {
     try {
