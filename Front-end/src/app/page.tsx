@@ -132,12 +132,6 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="flex items-center space-x-4">
-              <Link
-                href="/patient/dashboard"
-                className="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors px-2 py-2"
-              >
-                Patient Dashboard
-              </Link>
               {mounted && !isLoggedIn && (
                 <Link 
                   href="/login" 
