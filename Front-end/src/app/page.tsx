@@ -228,3 +228,27 @@ export default function HomePage() {
             style={{ objectFit: 'cover' }}
           />
         </div>
+
+        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+          {/* Hero CTAs — below image */}
+          <div className="mt-14 mb-16 flex flex-wrap items-center justify-center gap-3 sm:gap-4 sm:mt-16">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:opacity-95 sm:px-7 sm:py-3.5 sm:text-[15px]"
+              style={{
+                backgroundColor: '#1a4d32',
+                fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif',
+              }}
+            >
+              Get started
+              <span aria-hidden>→</span>
+            </Link>
+            <a
+              href="#how-it-works"
+              className="inline-flex items-center rounded-full border border-stone-300 bg-white/80 px-6 py-3 text-sm font-medium text-slate-900 transition-colors hover:border-stone-400 hover:bg-white sm:px-7 sm:py-3.5 sm:text-[15px]"
+              style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
+            >
+              See how it works
+            </a>
+          </div>
+
