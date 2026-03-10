@@ -252,3 +252,42 @@ export default function HomePage() {
             </a>
           </div>
 
+          {/* Specialities Section */}
+          <div className="py-16" style={{ backgroundColor: '#f9f9f9' }}>
+            <div className="mb-12 text-center">
+              <h2
+                className="text-2xl font-bold leading-tight text-[#0B1426] sm:text-3xl"
+                style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
+              >
+                Clinic and Specialities
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-lg text-gray-600">
+                Our multidisciplinary team brings together leading physicians across six specialities — so you get the right expertise without the runaround.
+              </p>
+            </div>
+
+            {/* Speciality Icons — outer scroll only; inner padding avoids clipping hover lift/scale */}
+            <div className="overflow-x-auto px-4 pb-2">
+              <div className="flex min-w-min justify-center gap-10 px-4 py-8">
+              {specialities.map((speciality) => (
+                <div
+                  key={speciality.name}
+                  className="shrink-0 cursor-pointer text-center transition-transform duration-300 ease-out hover:-translate-y-2 hover:scale-105"
+                >
+                  <div className="mx-auto mb-3 flex h-32 w-32 items-center justify-center rounded-full border-4 border-blue-50 bg-white shadow-md">
+                    <Image
+                      src={speciality.icon}
+                      alt={speciality.name}
+                      width={50}
+                      height={50}
+                      className="object-contain"
+                    />
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">{speciality.name}</p>
+                </div>
+              ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
