@@ -291,3 +291,13 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Features Section */}
+      <div className="py-20" style={{ backgroundColor: '#f9f9f9' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <FeaturesHubSection />
+
+          <HowItWorksSection />
+        </div>
+      </div>
+
