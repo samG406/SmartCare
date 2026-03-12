@@ -398,3 +398,37 @@ export default function HomePage() {
                   <p className="text-[11px] text-stone-500">Email</p>
                   <a
                     href="mailto:support@smartcare.com"
+                    className="mt-0.5 block text-[13px] text-stone-800 transition-colors hover:text-emerald-700"
+                  >
+                    support@smartcare.com
+                  </a>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stone-500">Phone</p>
+                  <a href="tel:+15551234567" className="mt-0.5 block text-[13px] text-stone-800 transition-colors hover:text-emerald-700">
+                    +1 (555) 123-4567
+                  </a>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stone-500">Studio</p>
+                  <p className="mt-0.5 text-[13px] leading-[1.6] text-stone-700">
+                    123 Healthcare Street
+                    <br />
+                    Medical City, MC 10001
+                  </p>
+                </div>
+              </address>
+            </div>
+          </div>
+
+          <div className="mt-12 pt-8 pb-4 text-center sm:mt-14 sm:pt-10">
+            <p className="m-0 text-[11px] leading-relaxed text-stone-500">
+              © 2025 SmartCare. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+      </div>
+    </div>
+  );
+}
