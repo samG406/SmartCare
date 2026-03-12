@@ -358,3 +358,43 @@ export default function HomePage() {
                 <li>
                   <Link
                     href="/doctors/dashboard"
+                    className="text-[13px] text-stone-700 underline-offset-4 transition-colors duration-200 hover:text-emerald-700 hover:underline"
+                  >
+                    For clinicians
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/patient/dashboard"
+                    className="text-[13px] text-stone-700 underline-offset-4 transition-colors duration-200 hover:text-emerald-700 hover:underline"
+                  >
+                    For patients
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/login"
+                    className="text-[13px] text-stone-700 underline-offset-4 transition-colors duration-200 hover:text-emerald-700 hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/signup"
+                    className="text-[13px] text-stone-700 underline-offset-4 transition-colors duration-200 hover:text-emerald-700 hover:underline"
+                  >
+                    Create an account
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div className="md:col-span-4 lg:col-span-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">Reach us</p>
+              <address className="mt-4 space-y-4 not-italic">
+                <div>
+                  <p className="text-[11px] text-stone-500">Email</p>
+                  <a
+                    href="mailto:support@smartcare.com"
