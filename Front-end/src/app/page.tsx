@@ -198,7 +198,7 @@ export default function HomePage() {
               className="mx-auto max-w-4xl text-balance text-4xl text-slate-900 sm:text-5xl md:text-[3.25rem] md:leading-tight"
               style={{
                 fontFamily: 'var(--font-instrument-serif), "Cormorant Garamond", Georgia, serif',
-                fontWeight: 400,
+                fontWeight: 550,
                 letterSpacing: '0.03em',
               }}
             >
