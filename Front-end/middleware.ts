@@ -7,22 +7,23 @@ export default function middleware(request: NextRequest) {
   const role = request.cookies.get('role')?.value;
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
-  const isDoctorRoute = pathname.startsWith('/doctors');
-  const isPatientRoute = pathname.startsWith('/patient');
+  // Auth disabled for local/demo: doctor & patient routes are open without token/role checks.
+  // const isDoctorRoute = pathname.startsWith('/doctors');
+  // const isPatientRoute = pathname.startsWith('/patient');
 
   // If accessing protected route without token -> login
-  if ((isDoctorRoute || isPatientRoute) && !token) {
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
-  }
+  // if ((isDoctorRoute || isPatientRoute) && !token) {
+  //   const url = new URL('/login', request.url);
+  //   return NextResponse.redirect(url);
+  // }
 
   // Role guard
-  if (isDoctorRoute && role !== 'doctor') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-  if (isPatientRoute && role !== 'patient') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
+  // if (isDoctorRoute && role !== 'doctor') {
+  //   return NextResponse.redirect(new URL('/login', request.url));
+  // }
+  // if (isPatientRoute && role !== 'patient') {
+  //   return NextResponse.redirect(new URL('/login', request.url));
+  // }
 
   // If already logged in and visiting auth pages, redirect by role
   if (token && isAuthPage) {
